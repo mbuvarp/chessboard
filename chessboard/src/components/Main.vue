@@ -1,19 +1,19 @@
 <template>
 
     <div id="main">
-        <board></board>
+        <board-container></board-container>
     </div>
 
 </template>
 
 <script>
-    import Board from './Board'
+    import BoardContainer from './BoardContainer'
 
     export default {
         name: 'Main',
         
         components: {
-            Board
+            BoardContainer
         }
     };
 

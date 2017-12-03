@@ -1,24 +1,31 @@
 <template>
     
-    <div id="board">
-        <!-- <div class="numbers">
+    <div class="container">
+        <div class="numbers">
             <div v-for="number in numbers" class="number" v-text="number"></div>
-        </div> -->
-        <div class="squares">
-            <div v-for="rank in squares" class="rank">
-                <div v-for="square in rank" class="square" :data-square="square">
+        </div>
+        <div id="board">
+            
+            <div class="squares">
+                <div v-for="rank in squares" class="rank">
                     <div
-                        class="piece"
-                        :style="'background-image: url(' + getPieceImagePath(square) + ');'"
-                        v-if="getPieceBySquare(square)"
-                    ></div>
+                        v-for="square in rank"
+                        :class="{ 'square': true, 'highlight-legal': highlightLegalSquare(square) }"
+                        :data-square="square"
+                    >
+                        <div
+                            class="piece"
+                            :style="'background-image: url(' + getPieceImagePath(square) + ');'"
+                            v-if="getPieceBySquare(square)"
+                        ></div>
+                    </div>
                 </div>
             </div>
         </div>
-        <!-- <div class="letters">
-            <div class="spacing"></div>
+        <div class="corner"></div>
+        <div class="letters">
             <div v-for="letter in letters" class="letter" v-text="letter"></div>
-        </div> -->
+        </div>
     </div>
 
 </template>
@@ -38,8 +45,14 @@
                 numbers: ['8', '7', '6', '5', '4', '3', '2', '1'],
                 letters: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'],
 
-                legalMoves: [],
-                currentPiece: null
+                currentPiece: null,
+
+                highlightedSquares: {
+                    legalMoves: []
+                },
+                options: {
+                    highlightLegalMoves: true
+                }
             }
         },
 
@@ -115,9 +128,10 @@
                 const square = pieceElement.parentElement.getAttribute('data-square')
                 const piece = this.getPieceBySquare(square)
 
-                console.log(piece.legalMoves)
-
                 this.currentPiece = piece
+
+                if (this.options.highlightLegalMoves)
+                    this.highlightedSquares.legalMoves = piece.legalMoves
             },
             pieceDragMove(evt) {
                 const pieceElement = evt.target
@@ -152,10 +166,8 @@
 
                 // Check if move is legal
                 const square = squareElement.getAttribute('data-square')
-
                 if (this.currentPiece.moveIsLegal(square)) {
-                    squareElement.appendChild(pieceElement)
-                    this.currentPiece.square = square
+                    this.performMove(square)
                 }
 
                 pieceElement.style.webkitTransform = 'translate(0px, 0px)'
@@ -169,9 +181,22 @@
 
                 // Update currentPiece and refresh legal moves
                 this.currentPiece = null
+                this.highlightedSquares.legalMoves = []
+            },
+
+            performMove(square, piece) {
+                if (typeof piece === 'undefined')
+                    piece = this.currentPiece
+                piece.square = square
                 this.findAllLegalMoves()
             },
 
+            squareIsOccupied(square, color) {
+                const piece = this.getPieceBySquare(square)
+                if (color)
+                    return typeof piece !== 'undefined' && piece.color === color
+                return typeof piece !== 'undefined'
+            },
             findAllLegalMoves() {
                 for (let i = 0; i < this.pieces.length; ++i)
                     this.pieces[i].legalMoves = this.findLegalMovesForPiece(this.pieces[i])
@@ -181,14 +206,20 @@
 
                 // Function to get letter from col number
                 const lfc = col => String.fromCharCode(64 + col)
+                // Function to get square from numbers
+                const sfn = (col, rank) => `${lfc(col)}${rank}`
+                // Function to get numbers from square
+                const stn = sqr => [sqr.charCodeAt(0) - 64, parseInt(sqr.substring(1, 2), 10)]
 
-                const legalMoves = []
+                let legalMoves = []
 
                 const letter = piece.square.substring(0, 1)
                 const col = letter.charCodeAt(0) - 64
                 const rank = parseInt(piece.square.substring(1, 2), 10)
 
                 if (piece.type === 'P') {
+                    // TODO en passant
+
                     if (piece.color === 'W') {
                         // Advance pawn 1
                         if (rank < 8)
@@ -204,6 +235,26 @@
                         if (rank === 7)
                             legalMoves.push(`${letter}${rank - 2}`)
                     }
+
+                    // Check if squares are occupied
+                    legalMoves.removeIf(square => this.squareIsOccupied(square))
+
+                    // Check diagonal attack
+                    if (piece.color === 'W') {
+                        if (col > 1)
+                            if (this.squareIsOccupied(sfn(col - 1, rank + 1), 'B'))
+                                legalMoves.push(sfn(col - 1, rank + 1))
+                        if (col < 8)
+                            if (this.squareIsOccupied(sfn(col + 1, rank + 1), 'B'))
+                                legalMoves.push(sfn(col + 1, rank + 1))
+                    } else {
+                        if (col > 1)
+                            if (this.squareIsOccupied(sfn(col - 1, rank - 1), 'W'))
+                                legalMoves.push(sfn(col - 1, rank - 1))
+                        if (col < 8)
+                            if (this.squareIsOccupied(sfn(col + 1, rank - 1), 'W'))
+                                legalMoves.push(sfn(col + 1, rank - 1))
+                    }
                 } else if (piece.type === 'R') {
                     // Legal ranks
                     for (let i = 1; i <= 8; ++i) {
@@ -218,6 +269,51 @@
                         const ltr = lfc(i)
                         legalMoves.push(`${ltr}${rank}`)
                     }
+
+                    // Check blockage
+                    // Col first
+                    let sameCol = legalMoves.filter(move => stn(move)[0] === col)
+                    const sameColAbove = sameCol.filter(move => stn(move)[1] > rank).sort(move => stn(move)[1] < rank)
+                    const sameColBelow = sameCol.filter(move => stn(move)[1] < rank).sort(move => stn(move)[1] < rank)
+
+                    for (let r = 0; r < sameColAbove.length; ++r) {
+                        if (this.squareIsOccupied(sameColAbove[r])) {
+                            const own = this.squareIsOccupied(sameColAbove[r], piece.color)
+                            sameColAbove.splice(own ? r : r + 1)
+                            break
+                        }
+                    }
+                    for (let r = 0; r < sameColBelow.length; ++r) {
+                        if (this.squareIsOccupied(sameColBelow[r])) {
+                            const own = this.squareIsOccupied(sameColBelow[r], piece.color)
+                            sameColBelow.splice(own ? r : r + 1)
+                            break
+                        }
+                    }
+                    sameCol = sameColAbove.concat(sameColBelow)
+
+                    // Then rank
+                    let sameRank = legalMoves.filter(move => stn(move)[1] === rank)
+                    const sameRankLeft = sameRank.filter(move => stn(move)[0] < col).sort(move => stn(move)[0] < col)
+                    const sameRankRight = sameRank.filter(move => stn(move)[0] > col).sort(move => stn(move)[0] < col)
+
+                    for (let c = 0; c < sameRankLeft.length; ++c) {
+                        if (this.squareIsOccupied(sameRankLeft[c])) {
+                            const own = this.squareIsOccupied(sameRankLeft[c], piece.color)
+                            sameRankLeft.splice(own ? c : c + 1)
+                            break
+                        }
+                    }
+                    for (let c = 0; c < sameRankRight.length; ++c) {
+                        if (this.squareIsOccupied(sameRankRight[c])) {
+                            const own = this.squareIsOccupied(sameRankRight[c], piece.color)
+                            sameRankRight.splice(own ? c : c + 1)
+                            break
+                        }
+                    }
+                    sameRank = sameRankLeft.concat(sameRankRight)
+
+                    legalMoves = sameCol.concat(sameRank)
                 } else if (piece.type === 'N') {
                     // Move two in direction
                     const left = col - 2
@@ -257,6 +353,8 @@
                         if (dr <= 8)
                             legalMoves.push(`${lfc(dr)}${down}`)
                     }
+
+                    legalMoves.removeIf(sqr => this.squareIsOccupied(sqr, piece.color))
                 } else if (piece.type === 'B') {
                     // Moving left and up
                     for (let c = col - 1; c >= 1; --c) {
@@ -286,12 +384,189 @@
                             break
                         legalMoves.push(`${lfc(c)}${r}`)
                     }
+
+                    // Check blockage
+                    // Top first
+                    let north = legalMoves.filter(move => stn(move)[1] > rank)
+                    const northWest = north.filter(move => stn(move)[0] < col).sort(move => stn(move)[0] > col)
+                    const northEast = north.filter(move => stn(move)[0] > col).sort(move => stn(move)[0] < col)
+
+                    for (let c = 0; c < northWest.length; ++c) {
+                        if (this.squareIsOccupied(northWest[c])) {
+                            const own = this.squareIsOccupied(northWest[c], piece.color)
+                            northWest.splice(own ? c : c + 1)
+                            break
+                        }
+                    }
+                    for (let c = 0; c < northEast.length; ++c) {
+                        if (this.squareIsOccupied(northEast[c])) {
+                            const own = this.squareIsOccupied(northEast[c], piece.color)
+                            northEast.splice(own ? c : c + 1)
+                            break
+                        }
+                    }
+                    north = northWest.concat(northEast)
+
+                    // Then bottom
+                    let south = legalMoves.filter(move => stn(move)[1] < rank)
+                    const southWest = south.filter(move => stn(move)[0] < col).sort(move => stn(move)[0] > col)
+                    const southEast = south.filter(move => stn(move)[0] > col).sort(move => stn(move)[0] < col)
+
+                    for (let c = 0; c < southWest.length; ++c) {
+                        if (this.squareIsOccupied(southWest[c])) {
+                            const own = this.squareIsOccupied(southWest[c], piece.color)
+                            southWest.splice(own ? c : c + 1)
+                            break
+                        }
+                    }
+                    for (let c = 0; c < southEast.length; ++c) {
+                        if (this.squareIsOccupied(southEast[c])) {
+                            const own = this.squareIsOccupied(southEast[c], piece.color)
+                            southEast.splice(own ? c : c + 1)
+                            break
+                        }
+                    }
+                    south = southWest.concat(southEast)
+
+                    legalMoves = north.concat(south)
                 } else if (piece.type === 'Q') {
-                    // Everywhere but current square
-                    for (let c = 1; c <= 8; ++c)
-                        for (let r = 1; r <= 8; ++r)
-                            if (c !== col || r !== rank)
-                                legalMoves.push(`${lfc(c)}${r}`)
+                    // Legal ranks
+                    for (let i = 1; i <= 8; ++i) {
+                        if (i === rank)
+                            continue
+                        legalMoves.push(`${letter}${i}`)
+                    }
+                    // Legal cols
+                    for (let i = 1; i <= 8; ++i) {
+                        if (i === col)
+                            continue
+                        const ltr = lfc(i)
+                        legalMoves.push(`${ltr}${rank}`)
+                    }
+                    // Moving left and up
+                    for (let c = col - 1; c >= 1; --c) {
+                        const r = rank + (col - c)
+                        if (r > 8)
+                            break
+                        legalMoves.push(`${lfc(c)}${r}`)
+                    }
+                    // Moving right and up
+                    for (let c = col + 1; c <= 8; ++c) {
+                        const r = rank + (c - col)
+                        if (r > 8)
+                            break
+                        legalMoves.push(`${lfc(c)}${r}`)
+                    }
+                    // Moving left and down
+                    for (let c = col - 1; c >= 1; --c) {
+                        const r = rank - (col - c)
+                        if (r < 1)
+                            break
+                        legalMoves.push(`${lfc(c)}${r}`)
+                    }
+                    // Moving right and down
+                    for (let c = col + 1; c <= 8; ++c) {
+                        const r = rank - (c - col)
+                        if (r < 1)
+                            break
+                        legalMoves.push(`${lfc(c)}${r}`)
+                    }
+
+                    // Check blockage
+                    let straight = null
+                    let diagonal = null
+
+                    // Straight first
+                    // Col first
+                    let sameCol = legalMoves.filter(move => stn(move)[0] === col)
+                    const sameColAbove = sameCol.filter(move => stn(move)[1] > rank).sort(move => stn(move)[1] < rank)
+                    const sameColBelow = sameCol.filter(move => stn(move)[1] < rank).sort(move => stn(move)[1] < rank)
+
+                    for (let r = 0; r < sameColAbove.length; ++r) {
+                        if (this.squareIsOccupied(sameColAbove[r])) {
+                            const own = this.squareIsOccupied(sameColAbove[r], piece.color)
+                            sameColAbove.splice(own ? r : r + 1)
+                            break
+                        }
+                    }
+                    for (let r = 0; r < sameColBelow.length; ++r) {
+                        if (this.squareIsOccupied(sameColBelow[r])) {
+                            const own = this.squareIsOccupied(sameColBelow[r], piece.color)
+                            sameColBelow.splice(own ? r : r + 1)
+                            break
+                        }
+                    }
+                    sameCol = sameColAbove.concat(sameColBelow)
+
+                    // Then rank
+                    let sameRank = legalMoves.filter(move => stn(move)[1] === rank)
+                    const sameRankLeft = sameRank.filter(move => stn(move)[0] < col).sort(move => stn(move)[0] < col)
+                    const sameRankRight = sameRank.filter(move => stn(move)[0] > col).sort(move => stn(move)[0] < col)
+
+                    for (let c = 0; c < sameRankLeft.length; ++c) {
+                        if (this.squareIsOccupied(sameRankLeft[c])) {
+                            const own = this.squareIsOccupied(sameRankLeft[c], piece.color)
+                            sameRankLeft.splice(own ? c : c + 1)
+                            break
+                        }
+                    }
+                    for (let c = 0; c < sameRankRight.length; ++c) {
+                        if (this.squareIsOccupied(sameRankRight[c])) {
+                            const own = this.squareIsOccupied(sameRankRight[c], piece.color)
+                            sameRankRight.splice(own ? c : c + 1)
+                            break
+                        }
+                    }
+                    sameRank = sameRankLeft.concat(sameRankRight)
+
+                    straight = sameCol.concat(sameRank)
+
+                    // Then diagonals
+                    // Top first
+                    let north = legalMoves.filter(move => stn(move)[1] > rank)
+                    const northWest = north.filter(move => stn(move)[0] < col).sort(move => stn(move)[0] > col)
+                    const northEast = north.filter(move => stn(move)[0] > col).sort(move => stn(move)[0] < col)
+
+                    for (let c = 0; c < northWest.length; ++c) {
+                        if (this.squareIsOccupied(northWest[c])) {
+                            const own = this.squareIsOccupied(northWest[c], piece.color)
+                            northWest.splice(own ? c : c + 1)
+                            break
+                        }
+                    }
+                    for (let c = 0; c < northEast.length; ++c) {
+                        if (this.squareIsOccupied(northEast[c])) {
+                            const own = this.squareIsOccupied(northEast[c], piece.color)
+                            northEast.splice(own ? c : c + 1)
+                            break
+                        }
+                    }
+                    north = northWest.concat(northEast)
+
+                    // Then bottom
+                    let south = legalMoves.filter(move => stn(move)[1] < rank)
+                    const southWest = south.filter(move => stn(move)[0] < col).sort(move => stn(move)[0] > col)
+                    const southEast = south.filter(move => stn(move)[0] > col).sort(move => stn(move)[0] < col)
+
+                    for (let c = 0; c < southWest.length; ++c) {
+                        if (this.squareIsOccupied(southWest[c])) {
+                            const own = this.squareIsOccupied(southWest[c], piece.color)
+                            southWest.splice(own ? c : c + 1)
+                            break
+                        }
+                    }
+                    for (let c = 0; c < southEast.length; ++c) {
+                        if (this.squareIsOccupied(southEast[c])) {
+                            const own = this.squareIsOccupied(southEast[c], piece.color)
+                            southEast.splice(own ? c : c + 1)
+                            break
+                        }
+                    }
+                    south = southWest.concat(southEast)
+
+                    diagonal = north.concat(south)
+
+                    legalMoves = straight.concat(diagonal)
                 } else if (piece.type === 'K') {
                     for (let c = 1; c <= 8; ++c)
                         for (let r = 1; r <= 8; ++r) {
@@ -302,6 +577,8 @@
                             else if (c === col + 1 && (r === rank - 1 || r === rank + 1 || r === rank))
                                 legalMoves.push(`${lfc(c)}${r}`)
                         }
+
+                    legalMoves.removeIf(sqr => this.squareIsOccupied(sqr, piece.color))
                 }
 
                 return legalMoves
@@ -344,6 +621,9 @@
 
                 return path
             },
+            highlightLegalSquare(square) {
+                return this.highlightedSquares.legalMoves.includes(square)
+            },
 
             keyDown(evt) {
                 switch (evt.key.toLowerCase()) {
@@ -365,90 +645,109 @@
         src: url('/static/fonts/OpenSans/OpenSans-Regular.ttf') format('truetype');        
     }
 
-    div#board {
-        width: 755px;
-        height: 755px;
-        margin: 10px auto 0;
+    div.container {
+        width: 100%;
+        height: 100%;
         font-size: 0;
         font-family: 'OpenSans-Regular', arial, sans-serif;
-        color: #181818;
 
         div.numbers {
-            display: inline-block;
-            width: 35px;
-            height: 720px;
+            float: left;
+            width: 5%;
+            height: 95%;
             background-color: #f9ca8b;
 
             div.number {
                 float: left;
-                width: 35px;
-                height: 12.5%;
-                line-height: 12.5%;
-                font-size: 1.5rem;
-                text-align: center;
-            }
-        }
-        div.letters {
-            width: 755px;
-            height: 35px;
-            background-color: #f9ca8b;
-
-            div.spacing {
-                display: inline-block;
-                width: 35px;
-            }
-            div.letter {
-                display: inline-block;
-                width: 12.5%;
-                height: 35px;
-                line-height: 35px;
-                font-size: 1.5rem;
-                text-align: center;
-            }
-        }
-        div.squares {
-            display: inline-block;
-            width: 720px;
-            height: 720px;
-
-            div.rank {
                 width: 100%;
                 height: 12.5%;
+                line-height: 350%;
+                font-size: 1.5rem;
+                text-align: center;
+            }
+        }
+        div.corner {
+            display: inline-block;
+            width: 5%;
+            height: 5%;
+            background-color: #f9ca8b;
+        }
+        div.letters {
+            display: inline-block;
+            width: 95%;
+            height: 5%;
+            background-color: #f9ca8b;
 
-                div.square {
-                    width: 12.5%;
-                    height: 100%;
-                    display: inline-block;
-                    position: relative;
-                    box-sizing: border-box;
+            div.letter {
+                float: left;
+                width: 12.5%;
+                height: 100%;
+                font-size: 1.5rem;
+                text-align: center;
+            }
+        }
+        div#board {
+            position: relative;
+            width: 95%;
+            color: #181818;
 
-                    &.piece-drag-over {
-                        border: 3px solid rgba(0,0,0,0.4);
-                    }
+            &:after {
+                content: '';
+                display: block;
+                padding-bottom: 100%;
+            }
+            div.squares {
+                display: inline-block;
+                position: absolute;
+                width: 100%;
+                height: 100%;
 
-                    div.piece {
-                        position: absolute;
-                        width: 100%;
+                div.rank {
+                    width: 100%;
+                    height: 12.5%;
+
+                    div.square {
+                        width: 12.5%;
                         height: 100%;
-                        background-size: cover;
-                        cursor: pointer;
+                        display: inline-block;
+                        position: relative;
+                        box-sizing: border-box;
 
+                        &.piece-drag-over {
+                            border: 3px solid rgba(0,0,0,0.4);
+                        }
+                        &.highlight-legal {
+                            &:after {
+                                content: '';
+                                position: absolute;
+                                width: 100%;
+                                height: 100%;
+                                background-color: rgba(0, 255, 0, 0.2);
+                            }
+                        }
+                        div.piece {
+                            position: absolute;
+                            width: 100%;
+                            height: 100%;
+                            background-size: cover;
+                            cursor: pointer;
+                        }
                     }
-                }
-                &:nth-child(odd) {
-                    div.square:nth-child(odd) {
-                        background-color: #eaa44f;
+                    &:nth-child(odd) {
+                        div.square:nth-child(odd) {
+                            background-color: #eaa44f;
+                        }
+                        div.square:nth-child(even) {
+                            background-color: #ad7129;
+                        }
                     }
-                    div.square:nth-child(even) {
-                        background-color: #ad7129;
-                    }
-                }
-                &:nth-child(even) {
-                    div.square:nth-child(odd) {
-                        background-color: #ad7129;
-                    }
-                    div.square:nth-child(even) {
-                        background-color: #eaa44f;
+                    &:nth-child(even) {
+                        div.square:nth-child(odd) {
+                            background-color: #ad7129;
+                        }
+                        div.square:nth-child(even) {
+                            background-color: #eaa44f;
+                        }
                     }
                 }
             }

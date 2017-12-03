@@ -52,6 +52,8 @@ module.exports = {
         'no-else-return': 0,
         'arrow-parens': 0,
         'no-nested-ternary': 0,
-        'no-continue': 0
+        'no-continue': 0,
+        'max-len': 0,
+        'no-param-reassign': 0
     }
 }

@@ -6,10 +6,17 @@ class ChessPiece {
         this.square = square
 
         this.legalMoves = []
+        this.is_captured = false
     }
 
     moveIsLegal(targetSquare) {
         return this.legalMoves.includes(targetSquare)
+    }
+
+    set captured(capd) {
+        this.is_captured = capd
+        if (capd)
+            this.square = null
     }
 }
 
