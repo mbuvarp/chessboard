@@ -1,30 +1,31 @@
 <template>
     
     <div id="board">
-        <div class="numbers">
+        <!-- <div class="numbers">
             <div v-for="number in numbers" class="number" v-text="number"></div>
-        </div>
+        </div> -->
         <div class="squares">
-            <div v-for="(rank, rankIndex) in squares" class="rank">
-                <div v-for="(square, squareIndex) in rank" class="square" :data-square="calculateSquare(rankIndex, squareIndex)">
+            <div v-for="rank in squares" class="rank">
+                <div v-for="square in rank" class="square" :data-square="square">
                     <div
                         class="piece"
                         :style="'background-image: url(' + getPieceImagePath(square) + ');'"
-                        v-if="square !== ''"
+                        v-if="getPieceBySquare(square)"
                     ></div>
                 </div>
             </div>
         </div>
-        <div class="letters">
+        <!-- <div class="letters">
             <div class="spacing"></div>
             <div v-for="letter in letters" class="letter" v-text="letter"></div>
-        </div>
+        </div> -->
     </div>
 
 </template>
 
 <script>
     import ChessPiece from '../assets/libs/chesspiece'
+
     const interact = require('interactjs')
     
     export default {
@@ -38,39 +39,57 @@
                 letters: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'],
 
                 legalMoves: [],
-                pieceDraggedFrom: []
+                currentPiece: null
             }
         },
 
         mounted() {
             this.generateSquares()
-            this.fillSquares()
+            this.generatePieces()
+            this.findAllLegalMoves()
             this.initInteract()
+
+            document.addEventListener('keydown', this.keyDown)
         },
 
         methods: {
 
             generateSquares() {
-                for (let y = 0; y < 8; ++y) {
+                for (let y = 8; y > 0; --y) {
                     this.squares.push([])
-                    for (let x = 0; x < 8; ++x)
-                        this.squares[y].push('')
+                    for (let x = 65; x < 73; ++x)
+                        this.squares[8 - y].push(String.fromCharCode(x) + y.toString())
                 }
             },
-            fillSquares() {
-                const rank1 = ['WRQ', 'WNQ', 'WBQ', 'WQ', 'WK', 'WBK', 'WNK', 'WRK']
-                const rank2 = ['WP1', 'WP2', 'WP3', 'WP4', 'WP5', 'WP6', 'WP7', 'WP8']
-                const rank7 = ['BP1', 'BP2', 'BP3', 'BP4', 'BP5', 'BP6', 'BP7', 'BP8']
-                const rank8 = ['BRQ', 'BNQ', 'BBQ', 'BQ', 'BK', 'BBK', 'BNK', 'BRK']
-
-                this.squares[7] = rank1
-                this.squares[6] = rank2
-                this.squares[1] = rank7
-                this.squares[0] = rank8
-            },
             generatePieces() {
-                
+                // Generate officers
+                const officers = ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+                for (let n = 0; n < 2; ++n)
+                    for (let i = 0; i < officers.length; ++i) {
+                        const type = officers[i]
+                        const color = n === 0 ? 'W' : 'B'
+                        const side = i < 3 ? 'Q' : (i > 4 ? 'K' : null)
+                        const letter = String.fromCharCode(65 + i)
+                        const square = n === 0 ? `${letter}1` : `${letter}8`
+
+                        const piece = new ChessPiece(type, color, side, square)
+                        this.pieces.push(piece)
+                    }
+
+                // Generate pawns
+                for (let n = 0; n < 2; ++n)
+                    for (let i = 0; i < officers.length; ++i) {
+                        const type = 'P'
+                        const color = n === 0 ? 'W' : 'B'
+                        const side = null
+                        const letter = String.fromCharCode(65 + i)
+                        const square = n === 0 ? `${letter}2` : `${letter}7`
+
+                        const piece = new ChessPiece(type, color, side, square)
+                        this.pieces.push(piece)
+                    }
             },
+
             initInteract() {
                 interact('.piece').draggable({
                     inertia: false,
@@ -92,42 +111,32 @@
             },
             pieceDragStart(evt) {
                 // Find legal moves
-                const piece = evt.target
-                const square = piece.parentElement.getAttribute('data-square')
+                const pieceElement = evt.target
+                const square = pieceElement.parentElement.getAttribute('data-square')
+                const piece = this.getPieceBySquare(square)
 
-                // Get array pos from square number
-                const rank = 8 - parseInt(square.substring(1, 2), 10)
-                const col = square.charCodeAt(0) - 65
+                console.log(piece.legalMoves)
 
-                const pieceDescriptor = this.squares[rank][col]
-                const pieceColor = pieceDescriptor.substring(0, 1)
-                const pieceType = pieceDescriptor.substring(1, 2)
-
-                const legalMoves = this.findLegalMoves(pieceType, pieceColor, rank, col)
-                this.legalMoves = legalMoves
-
-                // Update where piece started
-                this.pieceDraggedFrom = [rank, col]
-                console.log(legalMoves)
+                this.currentPiece = piece
             },
             pieceDragMove(evt) {
-                const piece = evt.target
+                const pieceElement = evt.target
                 // keep the dragged position in the data-x/data-y attributes
-                const x = (parseFloat(piece.getAttribute('data-x')) || 0) + evt.dx
-                const y = (parseFloat(piece.getAttribute('data-y')) || 0) + evt.dy
+                const x = (parseFloat(pieceElement.getAttribute('data-x')) || 0) + evt.dx
+                const y = (parseFloat(pieceElement.getAttribute('data-y')) || 0) + evt.dy
 
                 // translate the element
-                piece.style.webkitTransform = `translate(${x}px, ${y}px)`
-                piece.style.transform = `translate(${x}px, ${y}px)`
-                piece.style.zIndex = '1000'
+                pieceElement.style.webkitTransform = `translate(${x}px, ${y}px)`
+                pieceElement.style.transform = `translate(${x}px, ${y}px)`
+                pieceElement.style.zIndex = '1000'
 
                 // update the posiion attributes
-                piece.setAttribute('data-x', x)
-                piece.setAttribute('data-y', y)
+                pieceElement.setAttribute('data-x', x)
+                pieceElement.setAttribute('data-y', y)
             },
             pieceDragEnd(evt) {
-                const piece = evt.target
-                piece.style.zIndex = '10'
+                const pieceElement = evt.target
+                pieceElement.style.zIndex = '10'
             },
             pieceDragEnter(evt) {
                 const square = evt.target
@@ -138,94 +147,176 @@
                 square.classList.remove('piece-drag-over')
             },
             pieceDragDrop(evt) {
-                const square = evt.target
-                const piece = evt.relatedTarget
+                const squareElement = evt.target
+                const pieceElement = evt.relatedTarget
 
                 // Check if move is legal
-                const squareDescriptor = square.getAttribute('data-square')
-                // Get array pos from square descriptor
-                const rank = 8 - parseInt(squareDescriptor.substring(1, 2), 10)
-                const col = squareDescriptor.charCodeAt(0) - 65
+                const square = squareElement.getAttribute('data-square')
 
-                if (this.moveIsLegal(rank, col)) {
-                    square.appendChild(piece)
-
-                    // Update squares
-                    const draggedFromRank = this.pieceDraggedFrom[0]
-                    const draggedFromCol = this.pieceDraggedFrom[1]
-                    const pieceDescriptor = this.squares[draggedFromRank][draggedFromCol]
-                    this.squares[draggedFromRank][draggedFromCol] = ''
-                    this.squares[rank][col] = pieceDescriptor
+                if (this.currentPiece.moveIsLegal(square)) {
+                    squareElement.appendChild(pieceElement)
+                    this.currentPiece.square = square
                 }
 
-                piece.style.webkitTransform = 'translate(0px, 0px)'
-                piece.style.transform = 'translate(0px, 0px)'
+                pieceElement.style.webkitTransform = 'translate(0px, 0px)'
+                pieceElement.style.transform = 'translate(0px, 0px)'
 
-                // update the posiion attributes
-                piece.setAttribute('data-x', 0)
-                piece.setAttribute('data-y', 0)
+                // Update the posiion attributes
+                pieceElement.setAttribute('data-x', 0)
+                pieceElement.setAttribute('data-y', 0)
 
-                square.classList.remove('piece-drag-over')
+                squareElement.classList.remove('piece-drag-over')
+
+                // Update currentPiece and refresh legal moves
+                this.currentPiece = null
+                this.findAllLegalMoves()
             },
 
-            findLegalMoves(pieceType, pieceColor, rank, col) {
+            findAllLegalMoves() {
+                for (let i = 0; i < this.pieces.length; ++i)
+                    this.pieces[i].legalMoves = this.findLegalMovesForPiece(this.pieces[i])
+            },
+            findLegalMovesForPiece(piece) {
                 // TODO check if can move, e.g. if there is a discovered check
 
+                // Function to get letter from col number
+                const lfc = col => String.fromCharCode(64 + col)
+
                 const legalMoves = []
-                for (let x = 0; x < 8; ++x)
-                    for (let y = 0; y < 8; ++y)
-                        legalMoves.push([x, y])
 
-                // Pawns
-                if (pieceType === 'P') {
-                    // If white
-                    if (pieceColor === 'W') {
-                        // Remove ranks behind pawn
-                        legalMoves.removeIf(val => val[0] >= rank)
+                const letter = piece.square.substring(0, 1)
+                const col = letter.charCodeAt(0) - 64
+                const rank = parseInt(piece.square.substring(1, 2), 10)
 
-                        // Check if pawn is on starting rank
-                        if (rank === 6)
-                            legalMoves.removeIf(val => val[0] <= 3)
-                        // Or allow only one move
-                        else
-                            legalMoves.removeIf(val => val[0] <= rank - 2)
-
-                        // Remove more than one left and right
-                        legalMoves.removeIf(val => val[1] <= col - 2 || val[1] >= col + 2)
-                        // Remove two up left and right
-                        legalMoves.removeIf(val => val[0] === rank - 2 && val[1] !== col)
-                    } else { // If black
-                        legalMoves.push('hey')
+                if (piece.type === 'P') {
+                    if (piece.color === 'W') {
+                        // Advance pawn 1
+                        if (rank < 8)
+                            legalMoves.push(`${letter}${rank + 1}`)
+                        // Advance pawn 2 if on home rank
+                        if (rank === 2)
+                            legalMoves.push(`${letter}${rank + 2}`)
+                    } else {
+                        // Advance pawn 1
+                        if (rank > 1)
+                            legalMoves.push(`${letter}${rank - 1}`)
+                        // Advance pawn 2 if on home rank
+                        if (rank === 7)
+                            legalMoves.push(`${letter}${rank - 2}`)
                     }
+                } else if (piece.type === 'R') {
+                    // Legal ranks
+                    for (let i = 1; i <= 8; ++i) {
+                        if (i === rank)
+                            continue
+                        legalMoves.push(`${letter}${i}`)
+                    }
+                    // Legal cols
+                    for (let i = 1; i <= 8; ++i) {
+                        if (i === col)
+                            continue
+                        const ltr = lfc(i)
+                        legalMoves.push(`${ltr}${rank}`)
+                    }
+                } else if (piece.type === 'N') {
+                    // Move two in direction
+                    const left = col - 2
+                    const up = rank + 2
+                    const right = col + 2
+                    const down = rank - 2
+
+                    if (left >= 1) {
+                        const lu = rank + 1
+                        const ld = rank - 1
+                        if (lu <= 8)
+                            legalMoves.push(`${lfc(left)}${lu}`)
+                        if (ld >= 1)
+                            legalMoves.push(`${lfc(left)}${ld}`)
+                    }
+                    if (up <= 8) {
+                        const ul = col - 1
+                        const ur = col + 1
+                        if (ul >= 1)
+                            legalMoves.push(`${lfc(ul)}${up}`)
+                        if (ur <= 8)
+                            legalMoves.push(`${lfc(ur)}${up}`)
+                    }
+                    if (right <= 8) {
+                        const ru = rank + 1
+                        const rd = rank - 1
+                        if (ru <= 8)
+                            legalMoves.push(`${lfc(right)}${ru}`)
+                        if (rd >= 1)
+                            legalMoves.push(`${lfc(right)}${rd}`)
+                    }
+                    if (down >= 1) {
+                        const dl = col - 1
+                        const dr = col + 1
+                        if (dl >= 1)
+                            legalMoves.push(`${lfc(dl)}${down}`)
+                        if (dr <= 8)
+                            legalMoves.push(`${lfc(dr)}${down}`)
+                    }
+                } else if (piece.type === 'B') {
+                    // Moving left and up
+                    for (let c = col - 1; c >= 1; --c) {
+                        const r = rank + (col - c)
+                        if (r > 8)
+                            break
+                        legalMoves.push(`${lfc(c)}${r}`)
+                    }
+                    // Moving right and up
+                    for (let c = col + 1; c <= 8; ++c) {
+                        const r = rank + (c - col)
+                        if (r > 8)
+                            break
+                        legalMoves.push(`${lfc(c)}${r}`)
+                    }
+                    // Moving left and down
+                    for (let c = col - 1; c >= 1; --c) {
+                        const r = rank - (col - c)
+                        if (r < 1)
+                            break
+                        legalMoves.push(`${lfc(c)}${r}`)
+                    }
+                    // Moving right and down
+                    for (let c = col + 1; c <= 8; ++c) {
+                        const r = rank - (c - col)
+                        if (r < 1)
+                            break
+                        legalMoves.push(`${lfc(c)}${r}`)
+                    }
+                } else if (piece.type === 'Q') {
+                    // Everywhere but current square
+                    for (let c = 1; c <= 8; ++c)
+                        for (let r = 1; r <= 8; ++r)
+                            if (c !== col || r !== rank)
+                                legalMoves.push(`${lfc(c)}${r}`)
+                } else if (piece.type === 'K') {
+                    for (let c = 1; c <= 8; ++c)
+                        for (let r = 1; r <= 8; ++r) {
+                            if (c === col - 1 && (r === rank - 1 || r === rank + 1 || r === rank))
+                                legalMoves.push(`${lfc(c)}${r}`)
+                            else if (c === col && (r === rank - 1 || r === rank + 1))
+                                legalMoves.push(`${lfc(c)}${r}`)
+                            else if (c === col + 1 && (r === rank - 1 || r === rank + 1 || r === rank))
+                                legalMoves.push(`${lfc(c)}${r}`)
+                        }
                 }
 
                 return legalMoves
             },
-            moveIsLegal(rank, col) {
-                let legal = false
-                function callback(elmt) {
-                    if (elmt[0] === rank && elmt[1] === col)
-                        legal = true
-                }
-                this.legalMoves.forEach(callback)
-                return legal
-            },
 
-            calculateSquare(rankIndex, squareIndex) {
-                const number = (8 - rankIndex).toString()
-                const letter = String.fromCharCode(65 + squareIndex)
-
-                return `${letter}${number}`
+            getPieceBySquare(square) {
+                return this.pieces.find(piece => piece.square === square)
             },
-            getPieceImagePath(piece) {
-                if (piece === '')
+            getPieceImagePath(square) {
+                const piece = this.getPieceBySquare(square)
+                if (!piece)
                     return ''
 
-                const color = piece.substring(0, 1)
-                const type = piece.substring(1, 2)
-
                 let path = ''
-                switch (type) {
+                switch (piece.type) {
                 case 'P':
                     path += 'pawn'
                     break;
@@ -248,10 +339,19 @@
                     break;
                 }
 
-                path += color === 'W' ? '_white' : '_black'
+                path += piece.color === 'W' ? '_white' : '_black'
                 path = `/static/images/pieces/${path}.png`
 
                 return path
+            },
+
+            keyDown(evt) {
+                switch (evt.key.toLowerCase()) {
+                case 't':
+                    break;
+                default:
+                    break;
+                }
             }
         }
     }
@@ -282,8 +382,8 @@
             div.number {
                 float: left;
                 width: 35px;
-                height: 90px;
-                line-height: 90px;
+                height: 12.5%;
+                line-height: 12.5%;
                 font-size: 1.5rem;
                 text-align: center;
             }
@@ -299,7 +399,7 @@
             }
             div.letter {
                 display: inline-block;
-                width: 90px;
+                width: 12.5%;
                 height: 35px;
                 line-height: 35px;
                 font-size: 1.5rem;
@@ -313,10 +413,10 @@
 
             div.rank {
                 width: 100%;
-                height: 90px;
+                height: 12.5%;
 
                 div.square {
-                    width: 90px;
+                    width: 12.5%;
                     height: 100%;
                     display: inline-block;
                     position: relative;

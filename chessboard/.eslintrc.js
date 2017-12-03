@@ -50,6 +50,8 @@ module.exports = {
         'no-console': 0,
         'no-extend-native': 0,
         'no-else-return': 0,
-        'arrow-parens': 0
+        'arrow-parens': 0,
+        'no-nested-ternary': 0,
+        'no-continue': 0
     }
 }
