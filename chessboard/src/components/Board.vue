@@ -24,6 +24,7 @@
 </template>
 
 <script>
+    import ChessPiece from '../assets/libs/chesspiece'
     const interact = require('interactjs')
     
     export default {
@@ -31,6 +32,7 @@
 
         data() {
             return {
+                pieces: [],
                 squares: [],
                 numbers: ['8', '7', '6', '5', '4', '3', '2', '1'],
                 letters: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'],
@@ -65,6 +67,9 @@
                 this.squares[6] = rank2
                 this.squares[1] = rank7
                 this.squares[0] = rank8
+            },
+            generatePieces() {
+                
             },
             initInteract() {
                 interact('.piece').draggable({
