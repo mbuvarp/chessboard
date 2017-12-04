@@ -54,6 +54,9 @@ module.exports = {
         'no-nested-ternary': 0,
         'no-continue': 0,
         'max-len': 0,
-        'no-param-reassign': 0
+        'no-param-reassign': 0,
+        'no-mixed-operators': 0,
+        'no-restricted-syntax': 0,
+        'no-prototype-builtins': 0
     }
 }

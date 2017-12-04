@@ -13,7 +13,8 @@
                         :class="{
                             'square': true,
                             'highlight-legal': highlightLegalSquare(square),
-                            'highlight-move': highlightMoveSquare(square)
+                            'highlight-move': highlightMoveSquare(square),
+                            'piece-drag-over': interact.overSquare === square
                         }"
                         :data-square="square"
                     >
@@ -35,10 +36,12 @@
 </template>
 
 <script>
+    import Vue from 'vue'
     import { mapState } from 'vuex'
     import ChessPiece from '../assets/libs/chesspiece'
 
-    const interact = require('interactjs')
+    // const interact = require('interactjs')
+    const $ = require('jquery')
     
     export default {
         name: 'Board',
@@ -51,7 +54,13 @@
                 letters: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'],
 
                 currentPiece: null,
+                enPassant: null,
 
+                interact: {
+                    holdingPiece: null,
+                    squareCoordinates: {},
+                    overSquare: null
+                },
                 highlightedSquares: {
                     legalMoves: [],
                     move: []
@@ -69,11 +78,13 @@
             this.generateSquares()
             this.generatePieces()
             this.findAllLegalMoves()
-            this.initInteract()
 
             document.addEventListener('keydown', this.keyDown)
-        },
 
+            Vue.nextTick(() => {
+                this.initInteract()
+            })
+        },
         methods: {
 
             generateSquares() {
@@ -113,28 +124,46 @@
             },
 
             initInteract() {
-                interact('.piece').draggable({
-                    inertia: false,
-                    restrict: {
-                        restriction: '#board'
-                    },
-                    onstart: this.pieceDragStart,
-                    onmove: this.pieceDragMove,
-                    onend: this.pieceDragEnd
-                })
-
-                interact('.square').dropzone({
-                    accept: '.piece',
-
-                    ondragenter: this.pieceDragEnter,
-                    ondragleave: this.pieceDragLeave,
-                    ondrop: this.pieceDragDrop
-                })
+                $(document).on('mousedown', '.piece', this.pieceDragStart)
+                $(document).on('mousemove', this.pieceDragMove)
+                $(document).on('mouseup', '.piece', this.pieceDragEnd)
             },
             pieceDragStart(evt) {
-                // Find legal moves
-                const pieceElement = evt.target
-                const square = pieceElement.parentElement.getAttribute('data-square')
+                const pieceElement = $(evt.target)
+
+                // Get mouse position within element
+                const parentOffset = pieceElement.parent().offset();
+                const relX = Math.round(evt.pageX - parentOffset.left);
+                const relY = Math.round(evt.pageY - parentOffset.top);
+
+                // Snap to middle
+                const midX = -Math.round(pieceElement[0].offsetWidth / 2) + relX + 1
+                const midY = -Math.round(pieceElement[0].offsetHeight / 2) + relY - 1
+                pieceElement.css({
+                    left: midX,
+                    top: midY,
+                    zIndex: 1000
+                })
+                this.interact.holdingPiece = pieceElement
+                this.interact.holdingPieceStartX = midX
+                this.interact.holdingPieceStartY = midY
+
+                // Find all square coordinates
+                const squares = $('.square')
+                for (let s = 0; s < squares.length; ++s) {
+                    const square = $(squares[s])
+                    const squareDescriptor = square.attr('data-square')
+                    const left = square.offset().left
+                    const top = square.offset().top
+                    const right = left + square[0].offsetWidth
+                    const bottom = top + square[0].offsetHeight
+                    this.interact.squareCoordinates[squareDescriptor] = {
+                        left, top, right, bottom
+                    }
+                }
+
+                // Update current piece and highlights
+                const square = pieceElement.parent().attr('data-square')
                 const piece = this.getPieceBySquare(square)
 
                 this.currentPiece = piece
@@ -145,56 +174,54 @@
                     this.highlightedSquares.move.push(square)
             },
             pieceDragMove(evt) {
-                const pieceElement = evt.target
-                // keep the dragged position in the data-x/data-y attributes
-                const x = (parseFloat(pieceElement.getAttribute('data-x')) || 0) + evt.dx
-                const y = (parseFloat(pieceElement.getAttribute('data-y')) || 0) + evt.dy
+                if (this.interact.holdingPiece === null)
+                    return
 
-                // translate the element
-                // pieceElement.style.webkitTransform = `translate(${x}px, ${y}px)`
-                // pieceElement.style.transform = `translate(${x}px, ${y}px)`
-                pieceElement.style.left = x
-                pieceElement.style.top = y
-                pieceElement.style.zIndex = 1000
+                const pieceElement = this.interact.holdingPiece
 
-                // update the posiion attributes
-                pieceElement.setAttribute('data-x', x)
-                pieceElement.setAttribute('data-y', y)
+                // Update position
+                const parentOffset = pieceElement.parent().offset();
+                const midX = Math.round(pieceElement[0].offsetWidth / 2) + 1
+                const midY = Math.round(pieceElement[0].offsetHeight / 2) - 1
+                const deltaX = evt.pageX - parentOffset.left - midX
+                const deltaY = evt.pageY - parentOffset.top - midY
+
+                this.interact.holdingPiece.css({
+                    left: deltaX,
+                    top: deltaY
+                })
+
+                // Discover underlying square
+                const square = this.$helpers.findObjectKey(this.interact.squareCoordinates, value => 
+                    evt.pageX >= value.left && evt.pageX <= value.right &&
+                    evt.pageY >= value.top && evt.pageY <= value.bottom
+                )
+                if (square !== this.interact.overSquare) {
+                    this.interact.overSquare = square
+                }
             },
-            pieceDragEnd(evt) {
-                const pieceElement = evt.target
-                pieceElement.style.zIndex = 100
-            },
-            pieceDragEnter(evt) {
-                const square = evt.target
-                square.classList.add('piece-drag-over')
-            },
-            pieceDragLeave(evt) {
-                const square = evt.target
-                square.classList.remove('piece-drag-over')
-            },
-            pieceDragDrop(evt) {
-                const squareElement = evt.target
-                const pieceElement = evt.relatedTarget
+            pieceDragEnd() {
+                if (this.interact.holdingPiece === null)
+                    return
 
                 this.highlightedSquares.move = []
 
-                // Check if move is legal
-                const square = squareElement.getAttribute('data-square')
-                if (this.currentPiece.moveIsLegal(square)) {
+                const pieceElement = this.interact.holdingPiece
+
+                // Snap piece to square if legal move and perform move
+                const square = this.interact.overSquare
+                const squareElement = this.squareElementByDescriptor(square)
+                if (squareElement !== null && this.currentPiece.moveIsLegal(square)) {
                     this.performMove(square)
                 }
+                pieceElement.css({
+                    left: 0,
+                    top: 0,
+                    zIndex: 100
+                })
 
-                // pieceElement.style.webkitTransform = 'translate(0px, 0px)'
-                // pieceElement.style.transform = 'translate(0px, 0px)'
-                pieceElement.style.left = 0
-                pieceElement.style.top = 0
-
-                // Update the posiion attributes
-                pieceElement.setAttribute('data-x', 0)
-                pieceElement.setAttribute('data-y', 0)
-
-                squareElement.classList.remove('piece-drag-over')
+                this.interact.holdingPiece = null
+                this.interact.overSquare = null
 
                 // Update currentPiece and refresh legal moves
                 this.currentPiece = null
@@ -219,8 +246,12 @@
                 this.findAllLegalMoves()
             },
             capturePiece(piece) {
-                console.log(piece)
                 piece.capture()
+            },
+
+            squareElementByDescriptor(desc) {
+                const square = $(`.square[data-square="${desc}"]`)
+                return square.length ? square : null
             },
 
             squareIsOccupied(square, color) {
@@ -670,6 +701,7 @@
             width: 5%;
             height: 95%;
             background-color: #723904;
+            user-select: none;
 
             div.number {
                 float: left;
@@ -691,6 +723,7 @@
             width: 95%;
             height: 5%;
             background-color: #723904;
+            user-select: none;
 
             div.letter {
                 float: left;

@@ -29,6 +29,9 @@ export default new Vuex.Store({
                     'pirat',
                     'regular'
                 ]
+            },
+            theme: {
+
             }
         }
     }

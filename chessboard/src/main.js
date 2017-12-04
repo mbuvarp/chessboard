@@ -4,10 +4,14 @@ import Vue from 'vue'
 import App from './App'
 import router from './router'
 import store from './store/store'
+import helpers from './functions/helpers'
+import prototype from './functions/prototype'
 
 Vue.config.productionTip = false
 
 Vue.use(store)
+Vue.use(helpers)
+Vue.use(prototype)
 
 /* eslint-disable no-new */
 new Vue({
