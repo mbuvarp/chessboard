@@ -90,6 +90,12 @@
                 promoting: false,
                 promotion: null,
                 promoterToRight: true,
+                castling: {
+                    whiteKing: true,
+                    whiteQueen: true,
+                    blackKing: true,
+                    blackQueen: true
+                },
 
                 interact: {
                     holdingPiece: null,
@@ -284,6 +290,40 @@
                 const prevSquare = piece.square
                 piece.square = square
 
+                // Check for castling
+                if (piece.type === 'K') {
+                    const rank = square.substring(1, 2)
+                    const isCastling = rank === prevSquare.substring(1, 2) && // Same rank
+                          Math.abs(square.charCodeAt(0) - prevSquare.charCodeAt(0)) === 2 // Moves two squares
+                    if (isCastling) {
+                        const direction = square.charCodeAt(0) > prevSquare.charCodeAt(0) // true = kingside
+                        const rookCol = direction ? 'H' : 'A'
+                        const rook = this.getPieceBySquare(`${rookCol}${rank}`)
+                        rook.square = direction ? `F${rank}` : `D${rank}`
+                    }
+                }
+
+                if (piece.type === 'K') {
+                    if (piece.color === 'W') {
+                        this.castling.whiteKing = false
+                        this.castling.whiteQueen = false
+                    } else {
+                        this.castling.blackKing = false
+                        this.castling.blackQueen = false
+                    }
+                } else if (piece.type === 'R') {
+                    if (piece.color === 'W')
+                        if (piece.side === 'K')
+                            this.castling.whiteKing = false
+                        else
+                            this.castling.whiteQueen = false
+                    else
+                        if (piece.side === 'K')
+                            this.castling.blackKing = false
+                        else
+                            this.castling.blackQueen = false
+                }
+
                 // Check for en passant
                 if (piece.type === 'P' && Math.abs(square.charCodeAt(1) - prevSquare.charCodeAt(1)) > 1)
                     this.enPassant = String.fromCharCode(square.charCodeAt(0)) + (parseInt(square.substring(1, 2), 10) + (piece.color === 'W' ? -1 : 1))
@@ -361,6 +401,29 @@
                 if (color)
                     return typeof piece !== 'undefined' && piece.color === color
                 return typeof piece !== 'undefined'
+            },
+            squareIsAttacked(square, color) {
+                for (let i = 0; i < this.pieces.length; i++) {
+                    const piece = this.pieces[i]
+                    if (piece.color === color) {
+                        if (piece.type !== 'P' && piece.legalMoves.includes(square))
+                            return true
+                        else {
+                            const pawnCol = piece.square.charCodeAt(0)
+                            const pawnLeft = String.fromCharCode(pawnCol - 1)
+                            const pawnRight = String.fromCharCode(pawnCol + 1)
+                            const pawnRank = parseInt(piece.square.substring(1, 2), 10)
+                            const attackRank = pawnRank + (piece.color === 'W' ? 1 : -1)
+                            const pawnThreat = [
+                                `${pawnLeft}${attackRank}`,
+                                `${pawnRight}${attackRank}`
+                            ]
+                            if (pawnThreat.includes(square))
+                                return true
+                        }
+                    }
+                }
+                return false
             },
             findAllLegalMoves() {
                 for (let i = 0; i < this.pieces.length; ++i)
@@ -743,6 +806,35 @@
                             else if (c === col + 1 && (r === rank - 1 || r === rank + 1 || r === rank))
                                 legalMoves.push(`${lfc(c)}${r}`)
                         }
+
+                    // Castling
+                    if (piece.color === 'W') {
+                        if (this.castling.whiteKing &&
+                            !this.squareIsOccupied('F1') &&
+                            !this.squareIsOccupied('G1') &&
+                            !this.squareIsAttacked('F1', piece.opponent) &&
+                            !this.squareIsAttacked('G1', piece.opponent))
+                            legalMoves.push('G1')
+                        if (this.castling.whiteQueen &&
+                            !this.squareIsOccupied('C1') &&
+                            !this.squareIsOccupied('D1') &&
+                            !this.squareIsAttacked('C1', piece.opponent) &&
+                            !this.squareIsAttacked('D1', piece.opponent))
+                            legalMoves.push('C1')
+                    } else {
+                        if (this.castling.blackKing &&
+                            !this.squareIsOccupied('F8') &&
+                            !this.squareIsOccupied('G8') &&
+                            !this.squareIsAttacked('F8', piece.opponent) &&
+                            !this.squareIsAttacked('G8', piece.opponent))
+                            legalMoves.push('G8')
+                        if (this.castling.blackQueen &&
+                            !this.squareIsOccupied('C8') &&
+                            !this.squareIsOccupied('D8') &&
+                            !this.squareIsAttacked('C8', piece.opponent) &&
+                            !this.squareIsAttacked('D8', piece.opponent))
+                            legalMoves.push('C8')
+                    }
 
                     legalMoves.removeIf(sqr => this.squareIsOccupied(sqr, piece.color))
                 }
