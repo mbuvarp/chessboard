@@ -6,6 +6,8 @@ Vue.use(Vuex)
 export default new Vuex.Store({
     state: {
         config: {
+            fen: '',
+            pgn: '',
             board: {
                 highlight: {
                     legal: true,
@@ -33,6 +35,12 @@ export default new Vuex.Store({
             theme: {
 
             }
+        }
+    },
+
+    mutations: {
+        updateConfigFEN(state, value) {
+            state.config.fen = value
         }
     }
 })

@@ -25,13 +25,14 @@
         width: 720px;
         height: 720px;
         margin-right: 36px;
-        display: inline-block;
+        float: left;
         padding: 6px;
-        background-color: white;
+        background-color: #fafafa;
         text-shadow: 0px 0px 1px rgba(0, 0, 0, 0.5);
         box-shadow: 0 0 16px 5px rgba(0, 0, 0, 0.42),
                     inset 0 0 2px rgba(0, 0, 0, 0.63);
         border-radius: 2px;
+        box-sizing: border-box;
     }
 
 </style>

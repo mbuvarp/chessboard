@@ -68,7 +68,7 @@
 
 <script>
     import Vue from 'vue'
-    import { mapState } from 'vuex'
+    import { mapState, mapMutations } from 'vuex'
     import ChessPiece from '../assets/libs/chesspiece'
 
     // const interact = require('interactjs')
@@ -86,6 +86,7 @@
 
                 currentPiece: null,
                 turn: 0,
+                check: false,
                 enPassant: null,
                 promoting: false,
                 promotion: null,
@@ -96,6 +97,8 @@
                     blackKing: true,
                     blackQueen: true
                 },
+                halfMove: 0,
+                fullMove: 1,
 
                 interact: {
                     holdingPiece: null,
@@ -162,6 +165,8 @@
                         const piece = new ChessPiece(type, color, side, square)
                         this.pieces.push(piece)
                     }
+
+                this.updateConfigFEN(this.createFEN())
             },
 
             initInteract() {
@@ -252,9 +257,11 @@
                 // Snap piece to square if legal move and perform move
                 const square = this.interact.overSquare
                 const squareElement = this.squareElementByDescriptor(square)
-                if (squareElement !== null && this.currentPiece.moveIsLegal(square)) {
-                    this.performMove(square)
-                }
+                if (squareElement !== null && this.currentPiece.moveIsLegal(square))
+                    if (!this.check || !this.lookForCheckIf(this.currentPiece.square, square))
+                        this.performMove(square)
+                
+
                 pieceElement.css({
                     left: 0,
                     top: 0,
@@ -280,11 +287,13 @@
                     return
 
                 // Check if there is a capture
-                if (this.squareIsOccupied(square, piece.opponent))
+                if (this.squareIsOccupied(square, piece.opponent)) {
                     this.capturePiece(this.getPieceBySquare(square))
-                else if (square === this.enPassant) {
+                    this.halfMove = -1
+                } else if (square === this.enPassant && piece.type === 'P') {
                     const epSquare = this.enPassant.substring(0, 1) + (parseInt(this.enPassant.substring(1, 2), 10) + (piece.color === 'W' ? -1 : 1))
                     this.capturePiece(this.getPieceBySquare(epSquare))
+                    this.halfMove = -1
                 }
 
                 const prevSquare = piece.square
@@ -331,12 +340,20 @@
                     this.enPassant = null
 
                 const finishTurn = function (self) {
+                    // Increase halfMove and fullMove
+                    self.halfMove = piece.type === 'P' ? 0 : self.halfMove + 1
+                    self.fullMove += self.turn
+
                     // Update turn
                     self.turn = self.turn === 0 ? 1 : 0
+
+                    self.check = false
 
                     if (self.boardConfig.highlight.move)
                         self.highlightedSquares.move = [prevSquare, square]
                     
+                    // Update FEN and find new legal moves
+                    self.updateConfigFEN(self.createFEN())
                     self.findAllLegalMoves()
                 }
 
@@ -365,7 +382,6 @@
 
                 // Set promoter style
                 const col = Math.abs(square.charCodeAt(0) - (this.boardConfig.flipped ? 73 : 64))
-                console.log(col)
                 const toRight = col > 5
                 let left = squareElement.offset().left
                 if (toRight)
@@ -405,6 +421,8 @@
             squareIsAttacked(square, color) {
                 for (let i = 0; i < this.pieces.length; i++) {
                     const piece = this.pieces[i]
+                    if (piece.is_captured)
+                        continue
                     if (piece.color === color) {
                         if (piece.type !== 'P' && piece.legalMoves.includes(square))
                             return true
@@ -425,10 +443,16 @@
                 }
                 return false
             },
-            findAllLegalMoves() {
+            findAllLegalMoves(nocheck) {
+                if (typeof nocheck === 'undefined')
+                    nocheck = false
+
                 for (let i = 0; i < this.pieces.length; ++i)
                     if (!this.pieces[i].is_captured)
                         this.pieces[i].legalMoves = this.findLegalMovesForPiece(this.pieces[i])
+
+                if (!nocheck)
+                    this.check = this.lookForCheck()
             },
             findLegalMovesForPiece(piece) {
                 // TODO check if can move, e.g. if there is a discovered check
@@ -447,8 +471,6 @@
                 const rank = parseInt(piece.square.substring(1, 2), 10)
 
                 if (piece.type === 'P') {
-                    // TODO en passant
-
                     if (piece.color === 'W') {
                         // Advance pawn 1
                         if (rank < 8)
@@ -841,6 +863,39 @@
 
                 return legalMoves
             },
+            lookForCheck() {
+                // Check to see if king square is attacked
+                const whiteKing = this.pieces.find(piece => piece.color === 'W' && piece.type === 'K')
+                const blackKing = this.pieces.find(piece => piece.color === 'B' && piece.type === 'K')
+
+                if (typeof whiteKing === 'undefined' || typeof blackKing === 'undefined')
+                    // TODO invalid game
+                    return false
+
+                return this.squareIsAttacked(whiteKing.square, 'B') || this.squareIsAttacked(blackKing.square, 'W')
+            },
+            lookForCheckIf(fromSquare, toSquare) {
+                const piece = this.getPieceBySquare(fromSquare)
+
+                if (typeof piece === 'undefined')
+                    // TODO error
+                    return false
+
+                const pieceOnTarget = this.getPieceBySquare(toSquare)
+                if (typeof pieceOnTarget !== 'undefined')
+                    pieceOnTarget.is_captured = true
+
+                piece.square = toSquare
+                this.findAllLegalMoves(true)
+                const check = this.lookForCheck()
+
+                // Reset
+                if (typeof pieceOnTarget !== 'undefined')
+                    pieceOnTarget.is_captured = false
+                piece.square = fromSquare
+                this.findAllLegalMoves(false)
+                return check
+            },
 
             getPieceBySquare(square) {
                 return this.pieces.find(piece => piece.square === square)
@@ -867,14 +922,64 @@
                 return this.highlightedSquares.move.includes(square)
             },
 
+            createFEN() {
+                let fen = ''
+
+                // Iterate over ranks, descending
+                for (let r = 8; r >= 1; --r) {
+                    let rankStr = ''
+                    let empty = 0
+                    // Iterate over cols, from A
+                    for (let c = 65; c <= 72; ++c) {
+                        const letter = String.fromCharCode(c)
+                        const piece = this.getPieceBySquare(`${letter}${r}`)
+                        if (typeof piece === 'undefined')
+                            ++empty
+                        else {
+                            if (empty) {
+                                rankStr += empty
+                                empty = 0
+                            }
+                            rankStr += piece.color === 'B' ? piece.type.toLowerCase() : piece.type.toUpperCase()
+                        }
+                    }
+                    fen += (rankStr || '8')
+                    fen += empty > 0 && empty < 8 ? empty : ''
+                    fen += r === 1 ? '' : '/'
+                }
+
+                // Turn
+                const color = this.turn === 0 ? 'w' : 'b'
+                fen += ` ${color} `
+
+                // Castling
+                fen += this.castling.whiteKing ? 'K' : ''
+                fen += this.castling.whiteQueen ? 'Q' : ''
+                fen += this.castling.blackKing ? 'k' : ''
+                fen += this.castling.blackQueen ? 'q' : ''
+
+                // En passant
+                fen += this.enPassant === null ? ' - ' : ` ${this.enPassant.toLowerCase()} `
+
+                // Half move and full move
+                fen += `${this.halfMove} ${this.fullMove}`
+
+                return fen
+            },
+
             keyDown(evt) {
                 switch (evt.key.toLowerCase()) {
                 case 't':
+                    this.createFEN()
                     break;
                 default:
                     break;
                 }
-            }
+            },
+
+            ...mapMutations([
+                'updateConfigFEN'
+            ])
         }
     }
 
