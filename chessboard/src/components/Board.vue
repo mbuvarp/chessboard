@@ -235,10 +235,20 @@
                 // Check if there is a capture
                 if (this.squareIsOccupied(square, piece.opponent))
                     this.capturePiece(this.getPieceBySquare(square))
+                else if (square === this.enPassant) {
+                    const epSquare = this.enPassant.substring(0, 1) + (parseInt(this.enPassant.substring(1, 2), 10) + (piece.color === 'W' ? -1 : 1))
+                    this.capturePiece(this.getPieceBySquare(epSquare))
+                }
 
 
                 const prevSquare = piece.square
                 piece.square = square
+
+                // Check for en passant
+                if (piece.type === 'P' && Math.abs(square.charCodeAt(1) - prevSquare.charCodeAt(1)) > 1)
+                    this.enPassant = String.fromCharCode(square.charCodeAt(0)) + (parseInt(square.substring(1, 2), 10) + (piece.color === 'W' ? -1 : 1))
+                else
+                    this.enPassant = null
 
                 if (this.boardConfig.highlight.move)
                     this.highlightedSquares.move = [prevSquare, square]
@@ -306,17 +316,17 @@
                     // Check diagonal attack
                     if (piece.color === 'W') {
                         if (col > 1)
-                            if (this.squareIsOccupied(sfn(col - 1, rank + 1), 'B'))
+                            if (this.squareIsOccupied(sfn(col - 1, rank + 1), 'B') || sfn(col - 1, rank + 1) === this.enPassant)
                                 legalMoves.push(sfn(col - 1, rank + 1))
                         if (col < 8)
-                            if (this.squareIsOccupied(sfn(col + 1, rank + 1), 'B'))
+                            if (this.squareIsOccupied(sfn(col + 1, rank + 1), 'B') || sfn(col + 1, rank + 1) === this.enPassant)
                                 legalMoves.push(sfn(col + 1, rank + 1))
                     } else {
                         if (col > 1)
-                            if (this.squareIsOccupied(sfn(col - 1, rank - 1), 'W'))
+                            if (this.squareIsOccupied(sfn(col - 1, rank - 1), 'W') || sfn(col - 1, rank - 1) === this.enPassant)
                                 legalMoves.push(sfn(col - 1, rank - 1))
                         if (col < 8)
-                            if (this.squareIsOccupied(sfn(col + 1, rank - 1), 'W'))
+                            if (this.squareIsOccupied(sfn(col + 1, rank - 1), 'W') || sfn(col + 1, rank - 1) === this.enPassant)
                                 legalMoves.push(sfn(col + 1, rank - 1))
                     }
                 } else if (piece.type === 'R') {
