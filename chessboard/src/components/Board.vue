@@ -35,6 +35,7 @@
 </template>
 
 <script>
+    import { mapState } from 'vuex'
     import ChessPiece from '../assets/libs/chesspiece'
 
     const interact = require('interactjs')
@@ -54,30 +55,14 @@
                 highlightedSquares: {
                     legalMoves: [],
                     move: []
-                },
-                options: {
-                    highlightLegalMoves: true,
-                    highlightMove: true,
-
-                    boardInverted: false,
-
-                    pieceSet: 'cburnett',
-                    pieceSetCollection: [
-                        'alfonso',
-                        'cburnett',
-                        'chessicons',
-                        'chessmonk',
-                        'freestaunton',
-                        'kilfiger',
-                        'makruk',
-                        'maya',
-                        'merida',
-                        'metaltops',
-                        'pirat',
-                        'regular'
-                    ]
                 }
             }
+        },
+
+        computed: {
+            ...mapState({
+                boardConfig: state => state.config.board
+            })
         },
 
         mounted() {
@@ -154,9 +139,9 @@
 
                 this.currentPiece = piece
 
-                if (this.options.highlightLegalMoves)
+                if (this.boardConfig.highlight.legal)
                     this.highlightedSquares.legalMoves = piece.legalMoves
-                if (this.options.highlightMove)
+                if (this.boardConfig.highlight.move)
                     this.highlightedSquares.move.push(square)
             },
             pieceDragMove(evt) {
@@ -224,7 +209,7 @@
                 const prevSquare = piece.square
                 piece.square = square
 
-                if (this.options.highlightMove)
+                if (this.boardConfig.highlight.move)
                     this.highlightedSquares.move = [prevSquare, square]
                 
                 this.findAllLegalMoves()
@@ -637,7 +622,7 @@
                     return ''
 
                 let path = piece.color.toLowerCase() + piece.type.toLowerCase()
-                path = `/static/images/pieces/${this.options.pieceSet}/${path}.svg`
+                path = `/static/images/pieces/${this.boardConfig.pieceSet}/${path}.svg`
 
                 return path
             },
