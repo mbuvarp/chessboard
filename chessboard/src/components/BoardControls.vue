@@ -1,6 +1,11 @@
 <template>
 
     <div id="controls">
+        <div class="pgn">
+            <ul>
+                
+            </ul>
+        </div>
         <div class="fen">
             <h3>FEN</h3>
             <input type="text" :value="fen">
@@ -20,7 +25,12 @@
         },
 
         computed: {
+            movelist() {
+                
+            },
+
             ...mapState({
+                pgn: state => state.config.pgn,
                 fen: state => state.config.fen
             })
         },

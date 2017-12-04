@@ -7,7 +7,16 @@ export default new Vuex.Store({
     state: {
         config: {
             fen: '',
-            pgn: '',
+            pgn: {
+                event: null,
+                site: null, // City, Region COUNTRY (three letter code, IOC)
+                date: '??', // YYYY.MM.DD (?? = unknown)
+                round: null,
+                white: null, // Lastname, Firstname
+                black: null, // Lastname, Firstname
+                result: '*', // 1-0, 0-1, 1/2-1/2, * (other, e.g. ongoing)
+                moves: []
+            },
             board: {
                 highlight: {
                     legal: true,
@@ -42,5 +51,9 @@ export default new Vuex.Store({
         updateConfigFEN(state, value) {
             state.config.fen = value
         }
+    },
+
+    actions: {
+        
     }
 })
