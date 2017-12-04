@@ -12,7 +12,7 @@ export default new Vuex.Store({
                     move: true
                 },
 
-                inverted: false,
+                flipped: false,
 
                 pieceSet: 'cburnett',
                 pieceSets: [

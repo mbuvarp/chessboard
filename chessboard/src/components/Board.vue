@@ -5,7 +5,7 @@
             <div v-for="number in numbers" class="number" v-text="number"></div>
         </div>
         <div id="board">
-            
+            <div class="shadow" v-if="promoting"></div>
             <div class="squares">
                 <div v-for="rank in squares" class="rank">
                     <div
@@ -33,6 +33,35 @@
         <div class="letters">
             <div v-for="letter in letters" class="letter" v-text="letter"></div>
         </div>
+        <div class="promoter" v-show="promoting">
+            <div
+                class="piece-img queen"
+                @click="promoteTo('Q')"
+                :style="{ backgroundImage: 'url(' + getPieceImagePathByType('Q', turn ? 'B': 'W') + ')' }"
+                v-if="!promoterToRight"
+            ></div>
+            <div
+                class="piece-img rook"
+                @click="promoteTo('R')"
+                :style="{ backgroundImage: 'url(' + getPieceImagePathByType('R', turn ? 'B': 'W') + ')' }"
+            ></div>
+            <div
+                class="piece-img knight"
+                @click="promoteTo('N')"
+                :style="{ backgroundImage: 'url(' + getPieceImagePathByType('N', turn ? 'B': 'W') + ')' }"
+            ></div>
+            <div
+                class="piece-img bishop"
+                @click="promoteTo('B')"
+                :style="{ backgroundImage: 'url(' + getPieceImagePathByType('B', turn ? 'B': 'W') + ')' }"
+            ></div>
+            <div
+                class="piece-img queen"
+                @click="promoteTo('Q')"
+                :style="{ backgroundImage: 'url(' + getPieceImagePathByType('Q', turn ? 'B': 'W') + ')' }"
+                v-if="promoterToRight"
+            ></div>
+        </div>
     </div>
 
 </template>
@@ -58,6 +87,9 @@
                 currentPiece: null,
                 turn: 0,
                 enPassant: null,
+                promoting: false,
+                promotion: null,
+                promoterToRight: true,
 
                 interact: {
                     holdingPiece: null,
@@ -249,7 +281,6 @@
                     this.capturePiece(this.getPieceBySquare(epSquare))
                 }
 
-
                 const prevSquare = piece.square
                 piece.square = square
 
@@ -259,16 +290,65 @@
                 else
                     this.enPassant = null
 
-                // Update turn
-                this.turn = this.turn === 0 ? 1 : 0
+                const finishTurn = function (self) {
+                    // Update turn
+                    self.turn = self.turn === 0 ? 1 : 0
 
-                if (this.boardConfig.highlight.move)
-                    this.highlightedSquares.move = [prevSquare, square]
-                
-                this.findAllLegalMoves()
+                    if (self.boardConfig.highlight.move)
+                        self.highlightedSquares.move = [prevSquare, square]
+                    
+                    self.findAllLegalMoves()
+                }
+
+                // Check for promotion
+                if (piece.type === 'P' && piece.square.substring(1, 2) === (piece.color === 'W' ? '8' : '1')) {
+                    this.promote(piece, square)
+                    const unwatch = this.$watch('promoting', function (value) {
+                        if (!value)
+                            finishTurn(this)
+                        unwatch()
+                    })
+                } else {
+                    finishTurn(this)
+                }
             },
             capturePiece(piece) {
                 piece.capture()
+            },
+            promote(piece, square) {
+                const squareElement = this.squareElementByDescriptor(square)
+
+                if (squareElement === null)
+                    return
+
+                this.promoting = true
+
+                // Set promoter style
+                const col = Math.abs(square.charCodeAt(0) - (this.boardConfig.flipped ? 73 : 64))
+                console.log(col)
+                const toRight = col > 5
+                let left = squareElement.offset().left
+                if (toRight)
+                    left -= 3 * squareElement[0].offsetWidth
+                this.promoterToRight = toRight
+                $('.promoter').css({
+                    left,
+                    top: squareElement.offset().top,
+                    width: squareElement[0].offsetWidth * 4,
+                    height: squareElement[0].offsetHeight
+                })
+
+                const unwatch = this.$watch('promotion', function (value) {
+                    if (value) {
+                        piece.type = value
+                        this.promotion = null
+                    }
+                    unwatch()
+                })
+            },
+            promoteTo(type) {
+                this.promotion = type
+                this.promoting = false
             },
 
             squareElementByDescriptor(desc) {
@@ -683,6 +763,11 @@
 
                 return path
             },
+            getPieceImagePathByType(type, color) {
+                let path = color.toLowerCase() + type.toLowerCase()
+                path = `/static/images/pieces/${this.boardConfig.pieceSet}/${path}.svg`
+                return path
+            },
             highlightLegalSquare(square) {
                 return this.highlightedSquares.legalMoves.includes(square)
             },
@@ -769,6 +854,36 @@
                 text-align: center;
             }
         }
+        div.promoter {
+            position: absolute;
+            box-sizing: border-box;
+            padding: 4px;
+            background-color: #ad7129;
+            background: repeating-linear-gradient(
+                135deg,
+                #ad7129,
+                #ad7129 4px,
+                #bf7f33 4px,
+                #bf7f33 8px
+            );
+            border-radius: 4px;
+            z-index: 1100 !important;
+            box-shadow: 0 0 12px #111, inset 0 0 2px #333;
+
+            div.piece-img {
+                display: inline-block;
+                width: 25%;
+                height: 100%;
+                padding: 12px;
+                box-sizing: border-box;
+                background-size: cover;
+                border-radius: 4px;
+
+                &:hover {
+                    background-color: rgba(91, 52, 8, 0.55);
+                }
+            }
+        }
         div#board {
             position: relative;
             width: 95%;
@@ -778,6 +893,14 @@
                 content: '';
                 display: block;
                 padding-bottom: 100%;
+            }
+            div.shadow {
+                position: absolute;
+                width: 100%;
+                height: 100%;
+                left: calc(5% + 2px);
+                background-color: rgba(0, 0, 0, 0.6);
+                z-index: 500;
             }
             div.squares {
                 display: inline-block;

@@ -57,6 +57,8 @@ module.exports = {
         'no-param-reassign': 0,
         'no-mixed-operators': 0,
         'no-restricted-syntax': 0,
-        'no-prototype-builtins': 0
+        'no-prototype-builtins': 0,
+        'func-names': 0,
+        'prefer-arrow-callback': 0
     }
 }
