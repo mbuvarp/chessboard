@@ -27,7 +27,9 @@
                 </div>
             </div>
         </div>
-        <div class="corner"></div>
+        <div class="corner">
+            <div :class="turn ? 'black' : 'white'"></div>
+        </div>
         <div class="letters">
             <div v-for="letter in letters" class="letter" v-text="letter"></div>
         </div>
@@ -54,6 +56,7 @@
                 letters: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'],
 
                 currentPiece: null,
+                turn: 0,
                 enPassant: null,
 
                 interact: {
@@ -232,6 +235,12 @@
                 if (typeof piece === 'undefined')
                     piece = this.currentPiece
 
+                if (piece.color !== ['W', 'B'][this.turn])
+                    return
+
+                if (piece.square === square)
+                    return
+
                 // Check if there is a capture
                 if (this.squareIsOccupied(square, piece.opponent))
                     this.capturePiece(this.getPieceBySquare(square))
@@ -249,6 +258,9 @@
                     this.enPassant = String.fromCharCode(square.charCodeAt(0)) + (parseInt(square.substring(1, 2), 10) + (piece.color === 'W' ? -1 : 1))
                 else
                     this.enPassant = null
+
+                // Update turn
+                this.turn = this.turn === 0 ? 1 : 0
 
                 if (this.boardConfig.highlight.move)
                     this.highlightedSquares.move = [prevSquare, square]
@@ -724,9 +736,23 @@
         }
         div.corner {
             display: inline-block;
+            position: relative;
             width: 5%;
             height: 5%;
             background-color: #723904;
+
+            div {
+                width: 60%;
+                height: 60%;
+                position: absolute;
+                left: 50%;
+                top: 50%;
+                transform: translate(-50%, -50%);
+                box-shadow: inset 0 0 2px #333;
+
+                &.white { background-color: white; }
+                &.black { background-color: black; }
+            }
         }
         div.letters {
             display: inline-block;
