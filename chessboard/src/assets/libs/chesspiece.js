@@ -13,10 +13,14 @@ class ChessPiece {
         return this.legalMoves.includes(targetSquare)
     }
 
-    set captured(capd) {
-        this.is_captured = capd
-        if (capd)
-            this.square = null
+    capture() {
+        this.is_captured = true
+        this.square = null
+        this.legalMoves = []
+    }
+
+    get opponent() {
+        return this.color === 'W' ? 'B' : 'W'
     }
 }
 

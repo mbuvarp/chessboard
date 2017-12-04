@@ -10,7 +10,11 @@
                 <div v-for="rank in squares" class="rank">
                     <div
                         v-for="square in rank"
-                        :class="{ 'square': true, 'highlight-legal': highlightLegalSquare(square) }"
+                        :class="{
+                            'square': true,
+                            'highlight-legal': highlightLegalSquare(square),
+                            'highlight-move': highlightMoveSquare(square)
+                        }"
                         :data-square="square"
                     >
                         <div
@@ -48,10 +52,30 @@
                 currentPiece: null,
 
                 highlightedSquares: {
-                    legalMoves: []
+                    legalMoves: [],
+                    move: []
                 },
                 options: {
-                    highlightLegalMoves: true
+                    highlightLegalMoves: true,
+                    highlightMove: true,
+
+                    boardInverted: false,
+
+                    pieceSet: 'cburnett',
+                    pieceSetCollection: [
+                        'alfonso',
+                        'cburnett',
+                        'chessicons',
+                        'chessmonk',
+                        'freestaunton',
+                        'kilfiger',
+                        'makruk',
+                        'maya',
+                        'merida',
+                        'metaltops',
+                        'pirat',
+                        'regular'
+                    ]
                 }
             }
         },
@@ -132,6 +156,8 @@
 
                 if (this.options.highlightLegalMoves)
                     this.highlightedSquares.legalMoves = piece.legalMoves
+                if (this.options.highlightMove)
+                    this.highlightedSquares.move.push(square)
             },
             pieceDragMove(evt) {
                 const pieceElement = evt.target
@@ -142,7 +168,7 @@
                 // translate the element
                 pieceElement.style.webkitTransform = `translate(${x}px, ${y}px)`
                 pieceElement.style.transform = `translate(${x}px, ${y}px)`
-                pieceElement.style.zIndex = '1000'
+                pieceElement.style.zIndex = 1000
 
                 // update the posiion attributes
                 pieceElement.setAttribute('data-x', x)
@@ -150,7 +176,7 @@
             },
             pieceDragEnd(evt) {
                 const pieceElement = evt.target
-                pieceElement.style.zIndex = '10'
+                pieceElement.style.zIndex = 100
             },
             pieceDragEnter(evt) {
                 const square = evt.target
@@ -163,6 +189,8 @@
             pieceDragDrop(evt) {
                 const squareElement = evt.target
                 const pieceElement = evt.relatedTarget
+
+                this.highlightedSquares.move = []
 
                 // Check if move is legal
                 const square = squareElement.getAttribute('data-square')
@@ -187,8 +215,23 @@
             performMove(square, piece) {
                 if (typeof piece === 'undefined')
                     piece = this.currentPiece
+
+                // Check if there is a capture
+                if (this.squareIsOccupied(square, piece.opponent))
+                    this.capturePiece(this.getPieceBySquare(square))
+
+
+                const prevSquare = piece.square
                 piece.square = square
+
+                if (this.options.highlightMove)
+                    this.highlightedSquares.move = [prevSquare, square]
+                
                 this.findAllLegalMoves()
+            },
+            capturePiece(piece) {
+                console.log(piece)
+                piece.capture()
             },
 
             squareIsOccupied(square, color) {
@@ -199,7 +242,8 @@
             },
             findAllLegalMoves() {
                 for (let i = 0; i < this.pieces.length; ++i)
-                    this.pieces[i].legalMoves = this.findLegalMovesForPiece(this.pieces[i])
+                    if (!this.pieces[i].is_captured)
+                        this.pieces[i].legalMoves = this.findLegalMovesForPiece(this.pieces[i])
             },
             findLegalMovesForPiece(piece) {
                 // TODO check if can move, e.g. if there is a discovered check
@@ -592,37 +636,16 @@
                 if (!piece)
                     return ''
 
-                let path = ''
-                switch (piece.type) {
-                case 'P':
-                    path += 'pawn'
-                    break;
-                case 'R':
-                    path += 'rook'
-                    break;
-                case 'N':
-                    path += 'knight'
-                    break;
-                case 'B':
-                    path += 'bishop'
-                    break;
-                case 'Q':
-                    path += 'queen'
-                    break;
-                case 'K':
-                    path += 'king'
-                    break;
-                default:
-                    break;
-                }
-
-                path += piece.color === 'W' ? '_white' : '_black'
-                path = `/static/images/pieces/${path}.png`
+                let path = piece.color.toLowerCase() + piece.type.toLowerCase()
+                path = `/static/images/pieces/${this.options.pieceSet}/${path}.svg`
 
                 return path
             },
             highlightLegalSquare(square) {
                 return this.highlightedSquares.legalMoves.includes(square)
+            },
+            highlightMoveSquare(square) {
+                return this.highlightedSquares.move.includes(square)
             },
 
             keyDown(evt) {
@@ -650,12 +673,14 @@
         height: 100%;
         font-size: 0;
         font-family: 'OpenSans-Regular', arial, sans-serif;
+        font-weight: bold;
+        color: #f4e1d0;
 
         div.numbers {
             float: left;
             width: 5%;
             height: 95%;
-            background-color: #f9ca8b;
+            background-color: #723904;
 
             div.number {
                 float: left;
@@ -670,13 +695,13 @@
             display: inline-block;
             width: 5%;
             height: 5%;
-            background-color: #f9ca8b;
+            background-color: #723904;
         }
         div.letters {
             display: inline-block;
             width: 95%;
             height: 5%;
-            background-color: #f9ca8b;
+            background-color: #723904;
 
             div.letter {
                 float: left;
@@ -716,13 +741,23 @@
                         &.piece-drag-over {
                             border: 3px solid rgba(0,0,0,0.4);
                         }
+                        &.highlight-move {
+                            &:after {
+                                content: '';
+                                position: absolute;
+                                width: 100%;
+                                height: 100%;
+                                background-color: rgba(244, 232, 66, 0.5);
+                                z-index: 0;
+                            }
+                        }
                         &.highlight-legal {
                             &:after {
                                 content: '';
                                 position: absolute;
                                 width: 100%;
                                 height: 100%;
-                                background-color: rgba(0, 255, 0, 0.2);
+                                background-color: rgba(65, 178, 244, 0.4);
                             }
                         }
                         div.piece {
@@ -731,6 +766,7 @@
                             height: 100%;
                             background-size: cover;
                             cursor: pointer;
+                            z-index: 10;
                         }
                     }
                     &:nth-child(odd) {
