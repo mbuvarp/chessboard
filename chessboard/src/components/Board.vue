@@ -151,8 +151,10 @@
                 const y = (parseFloat(pieceElement.getAttribute('data-y')) || 0) + evt.dy
 
                 // translate the element
-                pieceElement.style.webkitTransform = `translate(${x}px, ${y}px)`
-                pieceElement.style.transform = `translate(${x}px, ${y}px)`
+                // pieceElement.style.webkitTransform = `translate(${x}px, ${y}px)`
+                // pieceElement.style.transform = `translate(${x}px, ${y}px)`
+                pieceElement.style.left = x
+                pieceElement.style.top = y
                 pieceElement.style.zIndex = 1000
 
                 // update the posiion attributes
@@ -183,8 +185,10 @@
                     this.performMove(square)
                 }
 
-                pieceElement.style.webkitTransform = 'translate(0px, 0px)'
-                pieceElement.style.transform = 'translate(0px, 0px)'
+                // pieceElement.style.webkitTransform = 'translate(0px, 0px)'
+                // pieceElement.style.transform = 'translate(0px, 0px)'
+                pieceElement.style.left = 0
+                pieceElement.style.top = 0
 
                 // Update the posiion attributes
                 pieceElement.setAttribute('data-x', 0)
