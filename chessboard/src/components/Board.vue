@@ -294,14 +294,19 @@
                 if (piece.square === square)
                     return
 
+                let capture = false
+                let castling = false
+
                 // Check if there is a capture
                 if (this.squareIsOccupied(square, piece.opponent)) {
                     this.capturePiece(this.getPieceBySquare(square))
                     this.halfMove = -1
+                    capture = true
                 } else if (square === this.enPassant && piece.type === 'P') {
                     const epSquare = this.enPassant.substring(0, 1) + (parseInt(this.enPassant.substring(1, 2), 10) + (piece.color === 'W' ? -1 : 1))
                     this.capturePiece(this.getPieceBySquare(epSquare))
                     this.halfMove = -1
+                    capture = true
                 }
 
                 const prevSquare = piece.square
@@ -317,6 +322,7 @@
                         const rookCol = direction ? 'H' : 'A'
                         const rook = this.getPieceBySquare(`${rookCol}${rank}`)
                         rook.square = direction ? `F${rank}` : `D${rank}`
+                        castling = true
                     }
                 }
 
@@ -347,6 +353,68 @@
                 else
                     this.enPassant = null
 
+                // Check for disambiguous moves for pgn
+                let pgnCol = null
+                let pgnRank = null
+                if (piece.type !== 'P' && piece.type !== 'K') {
+                    // Get pieces of same color and type as self
+                    const sameButDifferent = this.pieces.filter(el =>
+                        el.color === piece.color &&
+                        el.type === piece.type &&
+                        el.square !== piece.square
+                    )
+
+                    if (sameButDifferent.length === 1) {
+                        // If there are one other piece
+                        const other = sameButDifferent[0]
+                        // If they can move to same square
+                        if (piece.legalMoves.filter(m => other.legalMoves.includes(m)).length > 0) {
+                            // Check if rank is equal, and if so, use col
+                            if (prevSquare.getRank() === other.square.getRank())
+                                pgnCol = prevSquare.getCol()
+                            // Otherwise, use rank
+                            else if (prevSquare.getCol() === other.square.getCol())
+                                pgnRank = prevSquare.getRank()
+                        }
+                    } else if (sameButDifferent.length > 1) {
+                        // If there are more than one other piece focused on same square (promoted), get them into array
+                        const sameSquare = []
+                        for (let i = 0; i < sameButDifferent.length; i++) {
+                            const other = sameButDifferent[i]
+                            if (other.legalMoves.includes(piece.square))
+                                sameSquare.push(other)
+                        }
+                        // If one other
+                        if (sameSquare.length === 1) {
+                            const other = sameSquare[0]
+                            // If they can move to same square
+                            if (piece.legalMoves.filter(m => other.legalMoves.includes(m)).length > 0) {
+                                if (prevSquare.getRank() === other.square.getRank())
+                                    pgnCol = prevSquare.getCol()
+                                else if (prevSquare.getCol() === other.square.getCol())
+                                    pgnRank = prevSquare.getRank()
+                            }
+                        } else if (sameSquare.length > 1) {
+                            // If more than one other, check how many are on the same rank
+                            const selfRank = prevSquare.getRank()
+                            const selfCol = prevSquare.getCol()
+                            const sameRank = sameSquare.filter(p => p.square.getRank() === selfRank)
+                            const sameCol = sameSquare.filter(p => p.square.getCol() === selfCol)
+                            // If none on same rank, use that
+                            if (sameCol.len === 0)
+                                pgnCol = selfCol
+                            // Elsewise, if none on same col, use that
+                            else if (sameRank.len === 0)
+                                pgnRank = selfRank
+                            // Otherwise, use both
+                            else {
+                                pgnCol = selfCol
+                                pgnRank = selfRank
+                            }
+                        }
+                    }
+                }
+
                 const finishTurn = function (self) {
                     // Increase halfMove and fullMove
                     self.halfMove = piece.type === 'P' ? 0 : self.halfMove + 1
@@ -361,12 +429,14 @@
                     if (self.boardConfig.highlight.move)
                         self.highlightedSquares.move = [prevSquare, square]
                     
-                    // Update FEN and find new legal moves
+                    // Update FEN, PGN and find new legal moves
                     self.updateConfigFEN(self.createFEN())
+                    self.updateConfigPGN(piece.type, square, prevSquare, capture, castling, pgnCol, pgnRank)
                     self.findAllLegalMoves()
 
                     if (self.check) {
                         self.checkmate = self.lookForCheckMate(self.turn === 0 ? 'W' : 'B', true)
+                        // TODO what to do on mate
                     }
                 }
 
@@ -1117,6 +1187,15 @@
 
                 return fen
             },
+            updateConfigPGN(type, square, prevSquare, capture, castling, pgnCol, pgnRank) {
+                let pgn = ''
+                pgn += type === 'P' ? (capture ? prevSquare.getCol() : '') : type
+                pgn += pgnCol || ''
+                pgn += pgnRank || ''
+                pgn += capture ? 'x' : ''
+                pgn += square
+                this.addPGNMove(pgn)
+            },
 
             // ----------------------------------------
             // OTHER
@@ -1131,7 +1210,8 @@
             },
 
             ...mapMutations([
-                'updateConfigFEN'
+                'updateConfigFEN',
+                'addPGNMove'
             ])
         }
     }
