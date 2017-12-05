@@ -316,11 +316,11 @@
                 if (piece.type === 'K') {
                     const rank = square.getRank()
                     const isCastling = rank === prevSquare.getRank() && // Same rank
-                          Math.abs(square.getColNum() - prevSquare.getColNum()) === 2 // Moves two squares
+                          Math.abs(square.getFileNum() - prevSquare.getFileNum()) === 2 // Moves two squares
                     if (isCastling) {
-                        const direction = square.getColNum() > prevSquare.getColNum() // true = kingside
-                        const rookCol = direction ? 'H' : 'A'
-                        const rook = this.getPieceBySquare(`${rookCol}${rank}`)
+                        const direction = square.getFileNum() > prevSquare.getFileNum() // true = kingside
+                        const rookFile = direction ? 'H' : 'A'
+                        const rook = this.getPieceBySquare(`${rookFile}${rank}`)
                         rook.square = direction ? `F${rank}` : `D${rank}`
                         castling = true
                     }
@@ -354,7 +354,7 @@
                     this.enPassant = null
 
                 // Check for disambiguous moves for pgn
-                let pgnCol = null
+                let pgnFile = null
                 let pgnRank = null
                 if (piece.type !== 'P' && piece.type !== 'K') {
                     // Get pieces of same color and type as self
@@ -369,11 +369,11 @@
                         const other = sameButDifferent[0]
                         // If they can move to same square
                         if (piece.legalMoves.filter(m => other.legalMoves.includes(m)).length > 0) {
-                            // Check if rank is equal, and if so, use col
+                            // Check if rank is equal, and if so, use file
                             if (prevSquare.getRank() === other.square.getRank())
-                                pgnCol = prevSquare.getCol()
+                                pgnFile = prevSquare.getFile()
                             // Otherwise, use rank
-                            else if (prevSquare.getCol() === other.square.getCol())
+                            else if (prevSquare.getFile() === other.square.getFile())
                                 pgnRank = prevSquare.getRank()
                         }
                     } else if (sameButDifferent.length > 1) {
@@ -390,25 +390,25 @@
                             // If they can move to same square
                             if (piece.legalMoves.filter(m => other.legalMoves.includes(m)).length > 0) {
                                 if (prevSquare.getRank() === other.square.getRank())
-                                    pgnCol = prevSquare.getCol()
-                                else if (prevSquare.getCol() === other.square.getCol())
+                                    pgnFile = prevSquare.getFile()
+                                else if (prevSquare.getFile() === other.square.getFile())
                                     pgnRank = prevSquare.getRank()
                             }
                         } else if (sameSquare.length > 1) {
                             // If more than one other, check how many are on the same rank
                             const selfRank = prevSquare.getRank()
-                            const selfCol = prevSquare.getCol()
+                            const selfFile = prevSquare.getFile()
                             const sameRank = sameSquare.filter(p => p.square.getRank() === selfRank)
-                            const sameCol = sameSquare.filter(p => p.square.getCol() === selfCol)
+                            const sameFile = sameSquare.filter(p => p.square.getFile() === selfFile)
                             // If none on same rank, use that
-                            if (sameCol.len === 0)
-                                pgnCol = selfCol
-                            // Elsewise, if none on same col, use that
+                            if (sameFile.len === 0)
+                                pgnFile = selfFile
+                            // Elsewise, if none on same file, use that
                             else if (sameRank.len === 0)
                                 pgnRank = selfRank
                             // Otherwise, use both
                             else {
-                                pgnCol = selfCol
+                                pgnFile = selfFile
                                 pgnRank = selfRank
                             }
                         }
@@ -431,7 +431,7 @@
                     
                     // Update FEN, PGN and find new legal moves
                     self.updateConfigFEN(self.createFEN())
-                    self.updateConfigPGN(piece.type, square, prevSquare, capture, castling, pgnCol, pgnRank)
+                    self.updateConfigPGN(piece.type, square, prevSquare, capture, castling, pgnFile, pgnRank)
                     self.findAllLegalMoves()
 
                     if (self.check) {
@@ -464,8 +464,8 @@
                 this.promoting = true
 
                 // Set promoter style
-                const col = Math.abs(square.charCodeAt(0) - (this.boardConfig.flipped ? 73 : 64))
-                const toRight = col > 5
+                const file = Math.abs(square.charCodeAt(0) - (this.boardConfig.flipped ? 73 : 64))
+                const toRight = file > 5
                 let left = squareElement.offset().left
                 if (toRight)
                     left -= 3 * squareElement[0].offsetWidth
@@ -498,8 +498,8 @@
                         this.pieces[i].legalMoves = this.findLegalMovesForPiece(this.pieces[i])
 
                 if (!nocheck) {
-                    const onColor = this.turn ? 'B' : 'W'
-                    const check = this.lookForCheck(true, onColor)
+                    const onFileor = this.turn ? 'B' : 'W'
+                    const check = this.lookForCheck(true, onFileor)
                     this.check = check.length > 0
                     this.checkingPieces = check
                 }
@@ -507,17 +507,17 @@
             findLegalMovesForPiece(piece) {
                 // TODO check if can move, e.g. if there is a discovered check
 
-                // Function to get letter from col number
-                const lfc = col => String.fromCharCode(64 + col)
+                // Function to get letter from file number
+                const lfc = file => String.fromCharCode(64 + file)
                 // Function to get square from numbers
-                const sfn = (col, rank) => `${lfc(col)}${rank}`
+                const sfn = (file, rank) => `${lfc(file)}${rank}`
                 // Function to get numbers from square
                 const stn = sqr => [sqr.charCodeAt(0) - 64, parseInt(sqr.substring(1, 2), 10)]
 
                 let legalMoves = []
 
                 const letter = piece.square.substring(0, 1)
-                const col = letter.charCodeAt(0) - 64
+                const file = letter.charCodeAt(0) - 64
                 const rank = parseInt(piece.square.substring(1, 2), 10)
 
                 if (piece.type === 'P') {
@@ -542,19 +542,19 @@
 
                     // Check diagonal attack
                     if (piece.color === 'W') {
-                        if (col > 1)
-                            if (this.squareIsOccupied(sfn(col - 1, rank + 1), 'B') || sfn(col - 1, rank + 1) === this.enPassant)
-                                legalMoves.push(sfn(col - 1, rank + 1))
-                        if (col < 8)
-                            if (this.squareIsOccupied(sfn(col + 1, rank + 1), 'B') || sfn(col + 1, rank + 1) === this.enPassant)
-                                legalMoves.push(sfn(col + 1, rank + 1))
+                        if (file > 1)
+                            if (this.squareIsOccupied(sfn(file - 1, rank + 1), 'B') || sfn(file - 1, rank + 1) === this.enPassant)
+                                legalMoves.push(sfn(file - 1, rank + 1))
+                        if (file < 8)
+                            if (this.squareIsOccupied(sfn(file + 1, rank + 1), 'B') || sfn(file + 1, rank + 1) === this.enPassant)
+                                legalMoves.push(sfn(file + 1, rank + 1))
                     } else {
-                        if (col > 1)
-                            if (this.squareIsOccupied(sfn(col - 1, rank - 1), 'W') || sfn(col - 1, rank - 1) === this.enPassant)
-                                legalMoves.push(sfn(col - 1, rank - 1))
-                        if (col < 8)
-                            if (this.squareIsOccupied(sfn(col + 1, rank - 1), 'W') || sfn(col + 1, rank - 1) === this.enPassant)
-                                legalMoves.push(sfn(col + 1, rank - 1))
+                        if (file > 1)
+                            if (this.squareIsOccupied(sfn(file - 1, rank - 1), 'W') || sfn(file - 1, rank - 1) === this.enPassant)
+                                legalMoves.push(sfn(file - 1, rank - 1))
+                        if (file < 8)
+                            if (this.squareIsOccupied(sfn(file + 1, rank - 1), 'W') || sfn(file + 1, rank - 1) === this.enPassant)
+                                legalMoves.push(sfn(file + 1, rank - 1))
                     }
                 } else if (piece.type === 'R') {
                     // Legal ranks
@@ -563,40 +563,40 @@
                             continue
                         legalMoves.push(`${letter}${i}`)
                     }
-                    // Legal cols
+                    // Legal files
                     for (let i = 1; i <= 8; ++i) {
-                        if (i === col)
+                        if (i === file)
                             continue
                         const ltr = lfc(i)
                         legalMoves.push(`${ltr}${rank}`)
                     }
 
                     // Check blockage
-                    // Col first
-                    let sameCol = legalMoves.filter(move => stn(move)[0] === col)
-                    const sameColAbove = sameCol.filter(move => stn(move)[1] > rank).sort(move => stn(move)[1] < rank)
-                    const sameColBelow = sameCol.filter(move => stn(move)[1] < rank).sort(move => stn(move)[1] < rank)
+                    // File first
+                    let sameFile = legalMoves.filter(move => stn(move)[0] === file)
+                    const sameFileAbove = sameFile.filter(move => stn(move)[1] > rank).sort(move => stn(move)[1] < rank)
+                    const sameFileBelow = sameFile.filter(move => stn(move)[1] < rank).sort(move => stn(move)[1] < rank)
 
-                    for (let r = 0; r < sameColAbove.length; ++r) {
-                        if (this.squareIsOccupied(sameColAbove[r])) {
-                            const own = this.squareIsOccupied(sameColAbove[r], piece.color)
-                            sameColAbove.splice(own ? r : r + 1)
+                    for (let r = 0; r < sameFileAbove.length; ++r) {
+                        if (this.squareIsOccupied(sameFileAbove[r])) {
+                            const own = this.squareIsOccupied(sameFileAbove[r], piece.color)
+                            sameFileAbove.splice(own ? r : r + 1)
                             break
                         }
                     }
-                    for (let r = 0; r < sameColBelow.length; ++r) {
-                        if (this.squareIsOccupied(sameColBelow[r])) {
-                            const own = this.squareIsOccupied(sameColBelow[r], piece.color)
-                            sameColBelow.splice(own ? r : r + 1)
+                    for (let r = 0; r < sameFileBelow.length; ++r) {
+                        if (this.squareIsOccupied(sameFileBelow[r])) {
+                            const own = this.squareIsOccupied(sameFileBelow[r], piece.color)
+                            sameFileBelow.splice(own ? r : r + 1)
                             break
                         }
                     }
-                    sameCol = sameColAbove.concat(sameColBelow)
+                    sameFile = sameFileAbove.concat(sameFileBelow)
 
                     // Then rank
                     let sameRank = legalMoves.filter(move => stn(move)[1] === rank)
-                    const sameRankLeft = sameRank.filter(move => stn(move)[0] < col).sort(move => stn(move)[0] < col)
-                    const sameRankRight = sameRank.filter(move => stn(move)[0] > col).sort(move => stn(move)[0] < col)
+                    const sameRankLeft = sameRank.filter(move => stn(move)[0] < file).sort(move => stn(move)[0] < file)
+                    const sameRankRight = sameRank.filter(move => stn(move)[0] > file).sort(move => stn(move)[0] < file)
 
                     for (let c = 0; c < sameRankLeft.length; ++c) {
                         if (this.squareIsOccupied(sameRankLeft[c])) {
@@ -614,12 +614,12 @@
                     }
                     sameRank = sameRankLeft.concat(sameRankRight)
 
-                    legalMoves = sameCol.concat(sameRank)
+                    legalMoves = sameFile.concat(sameRank)
                 } else if (piece.type === 'N') {
                     // Move two in direction
-                    const left = col - 2
+                    const left = file - 2
                     const up = rank + 2
-                    const right = col + 2
+                    const right = file + 2
                     const down = rank - 2
 
                     if (left >= 1) {
@@ -631,8 +631,8 @@
                             legalMoves.push(`${lfc(left)}${ld}`)
                     }
                     if (up <= 8) {
-                        const ul = col - 1
-                        const ur = col + 1
+                        const ul = file - 1
+                        const ur = file + 1
                         if (ul >= 1)
                             legalMoves.push(`${lfc(ul)}${up}`)
                         if (ur <= 8)
@@ -647,8 +647,8 @@
                             legalMoves.push(`${lfc(right)}${rd}`)
                     }
                     if (down >= 1) {
-                        const dl = col - 1
-                        const dr = col + 1
+                        const dl = file - 1
+                        const dr = file + 1
                         if (dl >= 1)
                             legalMoves.push(`${lfc(dl)}${down}`)
                         if (dr <= 8)
@@ -658,29 +658,29 @@
                     legalMoves.removeIf(sqr => this.squareIsOccupied(sqr, piece.color))
                 } else if (piece.type === 'B') {
                     // Moving left and up
-                    for (let c = col - 1; c >= 1; --c) {
-                        const r = rank + (col - c)
+                    for (let c = file - 1; c >= 1; --c) {
+                        const r = rank + (file - c)
                         if (r > 8)
                             break
                         legalMoves.push(`${lfc(c)}${r}`)
                     }
                     // Moving right and up
-                    for (let c = col + 1; c <= 8; ++c) {
-                        const r = rank + (c - col)
+                    for (let c = file + 1; c <= 8; ++c) {
+                        const r = rank + (c - file)
                         if (r > 8)
                             break
                         legalMoves.push(`${lfc(c)}${r}`)
                     }
                     // Moving left and down
-                    for (let c = col - 1; c >= 1; --c) {
-                        const r = rank - (col - c)
+                    for (let c = file - 1; c >= 1; --c) {
+                        const r = rank - (file - c)
                         if (r < 1)
                             break
                         legalMoves.push(`${lfc(c)}${r}`)
                     }
                     // Moving right and down
-                    for (let c = col + 1; c <= 8; ++c) {
-                        const r = rank - (c - col)
+                    for (let c = file + 1; c <= 8; ++c) {
+                        const r = rank - (c - file)
                         if (r < 1)
                             break
                         legalMoves.push(`${lfc(c)}${r}`)
@@ -689,8 +689,8 @@
                     // Check blockage
                     // Top first
                     let north = legalMoves.filter(move => stn(move)[1] > rank)
-                    const northWest = north.filter(move => stn(move)[0] < col).sort(move => stn(move)[0] > col)
-                    const northEast = north.filter(move => stn(move)[0] > col).sort(move => stn(move)[0] < col)
+                    const northWest = north.filter(move => stn(move)[0] < file).sort(move => stn(move)[0] > file)
+                    const northEast = north.filter(move => stn(move)[0] > file).sort(move => stn(move)[0] < file)
 
                     for (let c = 0; c < northWest.length; ++c) {
                         if (this.squareIsOccupied(northWest[c])) {
@@ -710,8 +710,8 @@
 
                     // Then bottom
                     let south = legalMoves.filter(move => stn(move)[1] < rank)
-                    const southWest = south.filter(move => stn(move)[0] < col).sort(move => stn(move)[0] > col)
-                    const southEast = south.filter(move => stn(move)[0] > col).sort(move => stn(move)[0] < col)
+                    const southWest = south.filter(move => stn(move)[0] < file).sort(move => stn(move)[0] > file)
+                    const southEast = south.filter(move => stn(move)[0] > file).sort(move => stn(move)[0] < file)
 
                     for (let c = 0; c < southWest.length; ++c) {
                         if (this.squareIsOccupied(southWest[c])) {
@@ -737,37 +737,37 @@
                             continue
                         legalMoves.push(`${letter}${i}`)
                     }
-                    // Legal cols
+                    // Legal files
                     for (let i = 1; i <= 8; ++i) {
-                        if (i === col)
+                        if (i === file)
                             continue
                         const ltr = lfc(i)
                         legalMoves.push(`${ltr}${rank}`)
                     }
                     // Moving left and up
-                    for (let c = col - 1; c >= 1; --c) {
-                        const r = rank + (col - c)
+                    for (let c = file - 1; c >= 1; --c) {
+                        const r = rank + (file - c)
                         if (r > 8)
                             break
                         legalMoves.push(`${lfc(c)}${r}`)
                     }
                     // Moving right and up
-                    for (let c = col + 1; c <= 8; ++c) {
-                        const r = rank + (c - col)
+                    for (let c = file + 1; c <= 8; ++c) {
+                        const r = rank + (c - file)
                         if (r > 8)
                             break
                         legalMoves.push(`${lfc(c)}${r}`)
                     }
                     // Moving left and down
-                    for (let c = col - 1; c >= 1; --c) {
-                        const r = rank - (col - c)
+                    for (let c = file - 1; c >= 1; --c) {
+                        const r = rank - (file - c)
                         if (r < 1)
                             break
                         legalMoves.push(`${lfc(c)}${r}`)
                     }
                     // Moving right and down
-                    for (let c = col + 1; c <= 8; ++c) {
-                        const r = rank - (c - col)
+                    for (let c = file + 1; c <= 8; ++c) {
+                        const r = rank - (c - file)
                         if (r < 1)
                             break
                         legalMoves.push(`${lfc(c)}${r}`)
@@ -778,31 +778,31 @@
                     let diagonal = null
 
                     // Straight first
-                    // Col first
-                    let sameCol = legalMoves.filter(move => stn(move)[0] === col)
-                    const sameColAbove = sameCol.filter(move => stn(move)[1] > rank).sort(move => stn(move)[1] < rank)
-                    const sameColBelow = sameCol.filter(move => stn(move)[1] < rank).sort(move => stn(move)[1] < rank)
+                    // File first
+                    let sameFile = legalMoves.filter(move => stn(move)[0] === file)
+                    const sameFileAbove = sameFile.filter(move => stn(move)[1] > rank).sort(move => stn(move)[1] < rank)
+                    const sameFileBelow = sameFile.filter(move => stn(move)[1] < rank).sort(move => stn(move)[1] < rank)
 
-                    for (let r = 0; r < sameColAbove.length; ++r) {
-                        if (this.squareIsOccupied(sameColAbove[r])) {
-                            const own = this.squareIsOccupied(sameColAbove[r], piece.color)
-                            sameColAbove.splice(own ? r : r + 1)
+                    for (let r = 0; r < sameFileAbove.length; ++r) {
+                        if (this.squareIsOccupied(sameFileAbove[r])) {
+                            const own = this.squareIsOccupied(sameFileAbove[r], piece.color)
+                            sameFileAbove.splice(own ? r : r + 1)
                             break
                         }
                     }
-                    for (let r = 0; r < sameColBelow.length; ++r) {
-                        if (this.squareIsOccupied(sameColBelow[r])) {
-                            const own = this.squareIsOccupied(sameColBelow[r], piece.color)
-                            sameColBelow.splice(own ? r : r + 1)
+                    for (let r = 0; r < sameFileBelow.length; ++r) {
+                        if (this.squareIsOccupied(sameFileBelow[r])) {
+                            const own = this.squareIsOccupied(sameFileBelow[r], piece.color)
+                            sameFileBelow.splice(own ? r : r + 1)
                             break
                         }
                     }
-                    sameCol = sameColAbove.concat(sameColBelow)
+                    sameFile = sameFileAbove.concat(sameFileBelow)
 
                     // Then rank
                     let sameRank = legalMoves.filter(move => stn(move)[1] === rank)
-                    const sameRankLeft = sameRank.filter(move => stn(move)[0] < col).sort(move => stn(move)[0] < col)
-                    const sameRankRight = sameRank.filter(move => stn(move)[0] > col).sort(move => stn(move)[0] < col)
+                    const sameRankLeft = sameRank.filter(move => stn(move)[0] < file).sort(move => stn(move)[0] < file)
+                    const sameRankRight = sameRank.filter(move => stn(move)[0] > file).sort(move => stn(move)[0] < file)
 
                     for (let c = 0; c < sameRankLeft.length; ++c) {
                         if (this.squareIsOccupied(sameRankLeft[c])) {
@@ -820,13 +820,13 @@
                     }
                     sameRank = sameRankLeft.concat(sameRankRight)
 
-                    straight = sameCol.concat(sameRank)
+                    straight = sameFile.concat(sameRank)
 
                     // Then diagonals
                     // Top first
                     let north = legalMoves.filter(move => stn(move)[1] > rank)
-                    const northWest = north.filter(move => stn(move)[0] < col).sort(move => stn(move)[0] > col)
-                    const northEast = north.filter(move => stn(move)[0] > col).sort(move => stn(move)[0] < col)
+                    const northWest = north.filter(move => stn(move)[0] < file).sort(move => stn(move)[0] > file)
+                    const northEast = north.filter(move => stn(move)[0] > file).sort(move => stn(move)[0] < file)
 
                     for (let c = 0; c < northWest.length; ++c) {
                         if (this.squareIsOccupied(northWest[c])) {
@@ -846,8 +846,8 @@
 
                     // Then bottom
                     let south = legalMoves.filter(move => stn(move)[1] < rank)
-                    const southWest = south.filter(move => stn(move)[0] < col).sort(move => stn(move)[0] > col)
-                    const southEast = south.filter(move => stn(move)[0] > col).sort(move => stn(move)[0] < col)
+                    const southWest = south.filter(move => stn(move)[0] < file).sort(move => stn(move)[0] > file)
+                    const southEast = south.filter(move => stn(move)[0] > file).sort(move => stn(move)[0] < file)
 
                     for (let c = 0; c < southWest.length; ++c) {
                         if (this.squareIsOccupied(southWest[c])) {
@@ -871,11 +871,11 @@
                 } else if (piece.type === 'K') {
                     for (let c = 1; c <= 8; ++c)
                         for (let r = 1; r <= 8; ++r) {
-                            if (c === col - 1 && (r === rank - 1 || r === rank + 1 || r === rank))
+                            if (c === file - 1 && (r === rank - 1 || r === rank + 1 || r === rank))
                                 legalMoves.push(`${lfc(c)}${r}`)
-                            else if (c === col && (r === rank - 1 || r === rank + 1))
+                            else if (c === file && (r === rank - 1 || r === rank + 1))
                                 legalMoves.push(`${lfc(c)}${r}`)
-                            else if (c === col + 1 && (r === rank - 1 || r === rank + 1 || r === rank))
+                            else if (c === file + 1 && (r === rank - 1 || r === rank + 1 || r === rank))
                                 legalMoves.push(`${lfc(c)}${r}`)
                         }
 
@@ -913,18 +913,18 @@
 
                 return legalMoves
             },
-            lookForCheck(returnPieces, onColor) {
+            lookForCheck(returnPieces, onFileor) {
                 if (typeof returnPieces === 'undefined')
                     returnPieces = false
 
                 // Check to see if king square is attacked
-                const king = this.pieces.find(piece => piece.color === onColor && piece.type === 'K')
+                const king = this.pieces.find(piece => piece.color === onFileor && piece.type === 'K')
 
                 if (typeof king === 'undefined')
                     // TODO invalid game
                     return false
 
-                return this.squareIsAttacked(king.square, onColor === 'W' ? 'B' : 'W', returnPieces)
+                return this.squareIsAttacked(king.square, onFileor === 'W' ? 'B' : 'W', returnPieces)
             },
             lookForCheckIf(fromSquare, toSquare) {
                 const piece = this.getPieceBySquare(fromSquare)
@@ -949,13 +949,13 @@
                 this.findAllLegalMoves(false)
                 return check
             },
-            lookForCheckMate(onColor, checkedForCheck) {
-                const isCheck = checkedForCheck || this.lookForCheck(true, onColor)
+            lookForCheckMate(onFileor, checkedForCheck) {
+                const isCheck = checkedForCheck || this.lookForCheck(true, onFileor)
                 if (isCheck !== true && isCheck.length === 0)
                     return false
                 const checkingPieces = isCheck === true ? this.checkingPieces : isCheck
 
-                const king = this.pieces.find(piece => piece.color === onColor && piece.type === 'K')
+                const king = this.pieces.find(piece => piece.color === onFileor && piece.type === 'K')
                 if (typeof king === 'undefined')
                     // TODO invalid game
                     return false
@@ -973,7 +973,7 @@
 
                 // See if checking piece can be captured
                 const checkingPieceSquare = checkingPieces[0].square
-                const attackedBy = this.squareIsAttacked(checkingPieceSquare, onColor, true)
+                const attackedBy = this.squareIsAttacked(checkingPieceSquare, onFileor, true)
                 if (attackedBy.length > 0) {
                     // See if one of the attacking pieces can move
                     for (let i = 0; i < attackedBy.length; i++) {
@@ -992,7 +992,7 @@
 
                 // Check if any piece can move into one of the squares between attacking piece and king.
                 const squaresBetween = this.getSquaresBetween(checkingPieceSquare, king.square)
-                const pieces = this.pieces.filter(piece => !piece.is_captured && piece.color === onColor)
+                const pieces = this.pieces.filter(piece => !piece.is_captured && piece.color === onFileor)
                 for (let p = 0; p < pieces.length; p++) {
                     const piece = pieces[p]
                     // If piece is king, then that doesn't count, obviously
@@ -1018,12 +1018,12 @@
                     return typeof piece !== 'undefined' && piece.color === color && !piece.is_captured
                 return typeof piece !== 'undefined' && !piece.is_captured
             },
-            squareIsAttacked(square, byColor, returnPieces) {
+            squareIsAttacked(square, byFileor, returnPieces) {
                 if (typeof returnPieces === 'undefined')
                     returnPieces = false
 
                 const attackingPieces = []
-                const pieces = this.pieces.filter(piece => piece.color === byColor && !piece.is_captured)
+                const pieces = this.pieces.filter(piece => piece.color === byFileor && !piece.is_captured)
 
                 for (let i = 0; i < pieces.length; i++) {
                     const piece = pieces[i]
@@ -1033,9 +1033,9 @@
                         else
                             attackingPieces.push(piece)
                     } else if (piece.type === 'P') {
-                        const pawnCol = piece.square.charCodeAt(0)
-                        const pawnLeft = String.fromCharCode(pawnCol - 1)
-                        const pawnRight = String.fromCharCode(pawnCol + 1)
+                        const pawnFile = piece.square.charCodeAt(0)
+                        const pawnLeft = String.fromCharCode(pawnFile - 1)
+                        const pawnRight = String.fromCharCode(pawnFile + 1)
                         const pawnRank = parseInt(piece.square.substring(1, 2), 10)
                         const attackRank = pawnRank + (piece.color === 'W' ? 1 : -1)
                         const pawnThreat = [
@@ -1056,47 +1056,47 @@
                 if (sourceSquare === targetSquare)
                     return []
 
-                let sourceCol = sourceSquare.getColNum()
+                let sourceFile = sourceSquare.getFileNum()
                 let sourceRank = sourceSquare.getRankNum()
-                let targetCol = targetSquare.getColNum()
+                let targetFile = targetSquare.getFileNum()
                 let targetRank = targetSquare.getRankNum()
                 // Switch source and target so that source is left of target
-                if (sourceCol > targetCol) {
-                    const tempSourceCol = sourceCol
+                if (sourceFile > targetFile) {
+                    const tempSourceFile = sourceFile
                     const tempSourceRank = sourceRank
-                    sourceCol = targetCol
+                    sourceFile = targetFile
                     sourceRank = targetRank
-                    targetCol = tempSourceCol
+                    targetFile = tempSourceFile
                     targetRank = tempSourceRank
                 }
-                const sourceColLetter = sourceSquare.getCol()
+                const sourceFileLetter = sourceSquare.getFile()
 
                 const between = []
 
-                if (sourceCol === targetCol) {
-                    // If same col
+                if (sourceFile === targetFile) {
+                    // If same file
                     this.$helpers.numbersBetween(sourceRank, targetRank).forEach(rank => {
-                        between.push(`${sourceColLetter}${rank}`)
+                        between.push(`${sourceFileLetter}${rank}`)
                     })
                 } else if (sourceRank === targetRank) {
                     // If same rank
-                    this.$helpers.numbersBetween(sourceCol, targetCol).forEach(col => {
-                        const letter = col.getColLetter()
+                    this.$helpers.numbersBetween(sourceFile, targetFile).forEach(file => {
+                        const letter = file.getFileLetter()
                         between.push(`${letter}${sourceRank}`)
                     })
                 } else {
                     // If diagonal
-                    const colsBetween = this.$helpers.numbersBetween(sourceCol, targetCol)
+                    const filesBetween = this.$helpers.numbersBetween(sourceFile, targetFile)
                     const ranksBetween = this.$helpers.numbersBetween(sourceRank, targetRank)
 
                     // Sort arrays according to direction
-                    if (sourceRank > targetRank && sourceCol < targetCol)
+                    if (sourceRank > targetRank && sourceFile < targetFile)
                         ranksBetween.sort((a, b) => a < b)
 
                     // Should be same length unless function is used incorrectly, but just to be sure
-                    const min = Math.min(colsBetween.length, ranksBetween.length)
+                    const min = Math.min(filesBetween.length, ranksBetween.length)
                     for (let i = 0; i < min; i++) {
-                        const letter = colsBetween[i].getColLetter()
+                        const letter = filesBetween[i].getFileLetter()
                         const rank = ranksBetween[i]
                         between.push(`${letter}${rank}`)
                     }
@@ -1150,7 +1150,7 @@
                 for (let r = 8; r >= 1; --r) {
                     let rankStr = ''
                     let empty = 0
-                    // Iterate over cols, from A
+                    // Iterate over files, from A
                     for (let c = 65; c <= 72; ++c) {
                         const letter = String.fromCharCode(c)
                         const piece = this.getPieceBySquare(`${letter}${r}`)
@@ -1187,10 +1187,10 @@
 
                 return fen
             },
-            updateConfigPGN(type, square, prevSquare, capture, castling, pgnCol, pgnRank) {
+            updateConfigPGN(type, square, prevSquare, capture, castling, pgnFile, pgnRank) {
                 let pgn = ''
-                pgn += type === 'P' ? (capture ? prevSquare.getCol() : '') : type
-                pgn += pgnCol || ''
+                pgn += type === 'P' ? (capture ? prevSquare.getFile() : '') : type
+                pgn += pgnFile || ''
                 pgn += pgnRank || ''
                 pgn += capture ? 'x' : ''
                 pgn += square

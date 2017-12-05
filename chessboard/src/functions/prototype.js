@@ -9,14 +9,14 @@ export default function () {
     }
     Array.prototype.removeIf = removeIf
 
-    function getColFromString() {
+    function getFileFromString() {
         return this.substring(0, 1)
     }
-    String.prototype.getCol = getColFromString
-    function getColNumFromString() {
-        return this.getCol().charCodeAt(0) - 64
+    String.prototype.getFile = getFileFromString
+    function getFileNumFromString() {
+        return this.getFile().charCodeAt(0) - 64
     }
-    String.prototype.getColNum = getColNumFromString
+    String.prototype.getFileNum = getFileNumFromString
 
     function getRankFromString() {
         return this.substring(1, 2)
@@ -27,8 +27,8 @@ export default function () {
     }
     String.prototype.getRankNum = getRankNumFromString
 
-    function getColLetterFromNum() {
+    function getFileLetterFromNum() {
         return String.fromCharCode(64 + this)
     }
-    Number.prototype.getColLetter = getColLetterFromNum
+    Number.prototype.getFileLetter = getFileLetterFromNum
 }
