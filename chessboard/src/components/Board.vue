@@ -258,7 +258,7 @@
                 const square = this.interact.overSquare
                 const squareElement = this.squareElementByDescriptor(square)
                 if (squareElement !== null && this.currentPiece.moveIsLegal(square))
-                    if (!this.check || !this.lookForCheckIf(this.currentPiece.square, square))
+                    if ((!this.check && this.currentPiece.type !== 'K') || !this.lookForCheckIf(this.currentPiece.square, square))
                         this.performMove(square)
                 
 
