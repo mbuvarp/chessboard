@@ -169,6 +169,9 @@
                 this.updateConfigFEN(this.createFEN())
             },
 
+            // ----------------------------------------
+            // INTERACTION
+            // ----------------------------------------
             initInteract() {
                 $(document).on('mousedown', '.piece', this.pieceDragStart)
                 $(document).on('mousemove', this.pieceDragMove)
@@ -276,6 +279,9 @@
                 this.highlightedSquares.legalMoves = []
             },
 
+            // ----------------------------------------
+            // MOVES
+            // ----------------------------------------
             performMove(square, piece) {
                 if (typeof piece === 'undefined')
                     piece = this.currentPiece
@@ -405,43 +411,6 @@
             promoteTo(type) {
                 this.promotion = type
                 this.promoting = false
-            },
-
-            squareElementByDescriptor(desc) {
-                const square = $(`.square[data-square="${desc}"]`)
-                return square.length ? square : null
-            },
-
-            squareIsOccupied(square, color) {
-                const piece = this.getPieceBySquare(square)
-                if (color)
-                    return typeof piece !== 'undefined' && piece.color === color
-                return typeof piece !== 'undefined'
-            },
-            squareIsAttacked(square, color) {
-                for (let i = 0; i < this.pieces.length; i++) {
-                    const piece = this.pieces[i]
-                    if (piece.is_captured)
-                        continue
-                    if (piece.color === color) {
-                        if (piece.type !== 'P' && piece.legalMoves.includes(square))
-                            return true
-                        else {
-                            const pawnCol = piece.square.charCodeAt(0)
-                            const pawnLeft = String.fromCharCode(pawnCol - 1)
-                            const pawnRight = String.fromCharCode(pawnCol + 1)
-                            const pawnRank = parseInt(piece.square.substring(1, 2), 10)
-                            const attackRank = pawnRank + (piece.color === 'W' ? 1 : -1)
-                            const pawnThreat = [
-                                `${pawnLeft}${attackRank}`,
-                                `${pawnRight}${attackRank}`
-                            ]
-                            if (pawnThreat.includes(square))
-                                return true
-                        }
-                    }
-                }
-                return false
             },
             findAllLegalMoves(nocheck) {
                 if (typeof nocheck === 'undefined')
@@ -896,10 +865,53 @@
                 this.findAllLegalMoves(false)
                 return check
             },
+            squareIsOccupied(square, color) {
+                const piece = this.getPieceBySquare(square)
+                if (color)
+                    return typeof piece !== 'undefined' && piece.color === color
+                return typeof piece !== 'undefined'
+            },
+            squareIsAttacked(square, color) {
+                for (let i = 0; i < this.pieces.length; i++) {
+                    const piece = this.pieces[i]
+                    if (piece.is_captured)
+                        continue
+                    if (piece.color === color) {
+                        if (piece.type !== 'P' && piece.legalMoves.includes(square))
+                            return true
+                        else {
+                            const pawnCol = piece.square.charCodeAt(0)
+                            const pawnLeft = String.fromCharCode(pawnCol - 1)
+                            const pawnRight = String.fromCharCode(pawnCol + 1)
+                            const pawnRank = parseInt(piece.square.substring(1, 2), 10)
+                            const attackRank = pawnRank + (piece.color === 'W' ? 1 : -1)
+                            const pawnThreat = [
+                                `${pawnLeft}${attackRank}`,
+                                `${pawnRight}${attackRank}`
+                            ]
+                            if (pawnThreat.includes(square))
+                                return true
+                        }
+                    }
+                }
+                return false
+            },
 
+            // ----------------------------------------
+            // FIND SQUARES AND PIECES
+            // ----------------------------------------
+
+            squareElementByDescriptor(desc) {
+                const square = $(`.square[data-square="${desc}"]`)
+                return square.length ? square : null
+            },
             getPieceBySquare(square) {
                 return this.pieces.find(piece => piece.square === square)
             },
+
+            // ----------------------------------------
+            // BOARD VISUALS
+            // ----------------------------------------
             getPieceImagePath(square) {
                 const piece = this.getPieceBySquare(square)
                 if (!piece)
@@ -922,6 +934,10 @@
                 return this.highlightedSquares.move.includes(square)
             },
 
+
+            // ----------------------------------------
+            // CONFIGURATION
+            // ----------------------------------------
             createFEN() {
                 let fen = ''
 
@@ -967,6 +983,9 @@
                 return fen
             },
 
+            // ----------------------------------------
+            // OTHER
+            // ----------------------------------------
             keyDown(evt) {
                 switch (evt.key.toLowerCase()) {
                 case 't':
