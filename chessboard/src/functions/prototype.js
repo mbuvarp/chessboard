@@ -9,6 +9,13 @@ export default function () {
     }
     Array.prototype.removeIf = removeIf
 
+    function removeFromArray(value) {
+        const index = this.indexOf(value)
+        if (index > -1)
+            this.splice(index, 1)
+    }
+    Array.prototype.remove = removeFromArray
+
     function getFileFromString() {
         return this.substring(0, 1)
     }

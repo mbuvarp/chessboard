@@ -1,10 +1,10 @@
 <template>
     
     <div class="container">
-        <div class="numbers">
+        <div class="side numbers">
             <div v-for="number in numbers" class="number" v-text="number"></div>
         </div>
-        <div id="board">
+        <div id="board" oncontextmenu="return false">
             <div class="shadow" v-if="promoting"></div>
             <div class="squares">
                 <div v-for="rank in squares" class="rank">
@@ -14,6 +14,7 @@
                             'square': true,
                             'highlight-legal': highlightLegalSquare(square),
                             'highlight-move': highlightMoveSquare(square),
+                            'highlight-marked': highlightMarkedSquare(square),
                             'piece-drag-over': interact.overSquare === square
                         }"
                         :data-square="square"
@@ -27,10 +28,8 @@
                 </div>
             </div>
         </div>
-        <div class="corner">
-            <div :class="turn ? 'black' : 'white'"></div>
-        </div>
-        <div class="letters">
+        <div class="side corner"></div>
+        <div class="side letters">
             <div v-for="letter in letters" class="letter" v-text="letter"></div>
         </div>
         <div class="promoter" v-show="promoting">
@@ -71,7 +70,6 @@
     import { mapState, mapMutations } from 'vuex'
     import ChessPiece from '../assets/libs/chesspiece'
 
-    // const interact = require('interactjs')
     const $ = require('jquery')
     
     export default {
@@ -109,7 +107,8 @@
                 },
                 highlightedSquares: {
                     legalMoves: [],
-                    move: []
+                    move: [],
+                    marked: []
                 }
             }
         },
@@ -178,8 +177,13 @@
                 $(document).on('mousedown', '.piece', this.pieceDragStart)
                 $(document).on('mousemove', this.pieceDragMove)
                 $(document).on('mouseup', '.piece', this.pieceDragEnd)
+
+                $(document).on('mousedown', '.square', this.squareMouseDown)
             },
             pieceDragStart(evt) {
+                if (evt.button !== 0)
+                    return
+
                 const pieceElement = $(evt.target)
 
                 // Get mouse position within element
@@ -261,7 +265,7 @@
 
                 // Snap piece to square if legal move and perform move
                 const square = this.interact.overSquare
-                const squareElement = this.squareElementByDescriptor(square)
+                const squareElement = this.getSquareElementByDescriptor(square)
                 if (squareElement !== null && this.currentPiece.moveIsLegal(square))
                     if ((!this.check && this.currentPiece.type !== 'K') || !this.lookForCheckIf(this.currentPiece.square, square))
                         this.performMove(square)
@@ -458,7 +462,7 @@
                 piece.capture()
             },
             promote(piece, square) {
-                const squareElement = this.squareElementByDescriptor(square)
+                const squareElement = this.getSquareElementByDescriptor(square)
 
                 if (squareElement === null)
                     return
@@ -1106,9 +1110,17 @@
 
                 return between
             },
-            squareElementByDescriptor(desc) {
+            getSquareElementByDescriptor(desc) {
                 const square = $(`.square[data-square="${desc}"]`)
                 return square.length ? square : null
+            },
+            getPieceElementBySquare(square) {
+                const squareElement = this.getSquareElementByDescriptor(square)
+                if (typeof squareElement === 'undefined')
+                    // TODO Error handling
+                    return null
+
+                return $('.piece', $(squareElement))
             },
             getPieceBySquare(square) {
                 return this.pieces.find(piece => piece.square === square)
@@ -1138,6 +1150,9 @@
             },
             highlightMoveSquare(square) {
                 return this.highlightedSquares.move.includes(square)
+            },
+            highlightMarkedSquare(square) {
+                return this.highlightedSquares.marked.includes(square)
             },
 
 
@@ -1207,9 +1222,49 @@
             // ----------------------------------------
             // OTHER
             // ----------------------------------------
+            animatedMove(sourceSquare, targetSquare) {
+                const sourceSquareElement = this.getSquareElementByDescriptor(sourceSquare)
+                if (typeof sourceSquareElement === 'undefined')
+                    // TODO Error handling
+                    return null
+
+                const targetSquareElement = this.getSquareElementByDescriptor(targetSquare)
+                if (typeof targetSquareElement === 'undefined')
+                    // TODO Error handling
+                    return null
+
+                const pieceElement = this.getPieceElementBySquare(sourceSquare)
+
+                // Get target coordinates
+                const sourceX = sourceSquareElement.offset().left
+                const sourceY = sourceSquareElement.offset().top
+                const targetX = targetSquareElement.offset().left
+                const targetY = targetSquareElement.offset().top
+                const deltaX = targetX - sourceX
+                const deltaY = targetY - sourceY
+
+                // Animate
+                pieceElement.animate({
+                    left: deltaX,
+                    top: deltaY
+                }, 100, 'linear')
+
+                return null
+            },
+            squareMouseDown(evt) {
+                if (evt.button !== 2)
+                    return
+
+                const squareDescriptor = $(evt.currentTarget).attr('data-square')
+                if (this.highlightedSquares.marked.includes(squareDescriptor))
+                    this.highlightedSquares.marked.remove(squareDescriptor)
+                else
+                    this.highlightedSquares.marked.push(squareDescriptor)
+            },
             keyDown(evt) {
                 switch (evt.key.toLowerCase()) {
                 case 't':
+                    this.animatedMove('e2', 'e3')
                     break;
                 default:
                     break;
@@ -1240,12 +1295,14 @@
         font-weight: bold;
         color: #f4e1d0;
 
+        div.side {
+            background-color: #9b6b47;
+            user-select: none;
+        }
         div.numbers {
             float: left;
             width: 5%;
             height: 95%;
-            background-color: #723904;
-            user-select: none;
 
             div.number {
                 float: left;
@@ -1261,27 +1318,11 @@
             position: relative;
             width: 5%;
             height: 5%;
-            background-color: #723904;
-
-            div {
-                width: 60%;
-                height: 60%;
-                position: absolute;
-                left: 50%;
-                top: 50%;
-                transform: translate(-50%, -50%);
-                box-shadow: inset 0 0 2px #333;
-
-                &.white { background-color: white; }
-                &.black { background-color: black; }
-            }
         }
         div.letters {
             display: inline-block;
             width: 95%;
             height: 5%;
-            background-color: #723904;
-            user-select: none;
 
             div.letter {
                 float: left;
@@ -1378,6 +1419,15 @@
                                 background-color: rgba(65, 178, 244, 0.4);
                             }
                         }
+                        &.highlight-marked {
+                            &:after {
+                                content: '';
+                                position: absolute;
+                                width: 100%;
+                                height: 100%;
+                                background-color: rgba(201, 0, 0, 0.6);
+                            }
+                        }
                         div.piece {
                             position: absolute;
                             width: 100%;
@@ -1389,18 +1439,18 @@
                     }
                     &:nth-child(odd) {
                         div.square:nth-child(odd) {
-                            background-color: #eaa44f;
+                            background-color: #e5bd8b;
                         }
                         div.square:nth-child(even) {
-                            background-color: #ad7129;
+                            background-color: #b5794c;
                         }
                     }
                     &:nth-child(even) {
                         div.square:nth-child(odd) {
-                            background-color: #ad7129;
+                            background-color: #b5794c;
                         }
                         div.square:nth-child(even) {
-                            background-color: #eaa44f;
+                            background-color: #e5bd8b;
                         }
                     }
                 }

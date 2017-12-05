@@ -15,7 +15,7 @@ export default new Vuex.Store({
                 white: null, // Lastname, Firstname
                 black: null, // Lastname, Firstname
                 result: '*', // 1-0, 0-1, 1/2-1/2, * (other, e.g. ongoing)
-                moves: [[]]
+                moves: []
             },
             board: {
                 highlight: {
@@ -52,12 +52,7 @@ export default new Vuex.Store({
             state.config.fen = fen
         },
         addPGNMove(state, move) {
-            const moves = state.config.pgn.moves
-            const lastMoveLen = moves[moves.length - 1].length
-            if (lastMoveLen === 2)
-                state.config.pgn.moves.push([move])
-            else
-                state.config.pgn.moves[moves.length - 1].push(move)
+            state.config.pgn.moves.push(move)
         }
     },
 })

@@ -21,6 +21,8 @@
 <script>
     import { mapState, mapMutations } from 'vuex'
 
+    const $ = require('jquery')
+
     export default {
         name: 'BoardControls',
         
@@ -31,14 +33,12 @@
         computed: {
             movelist() {
                 const moves = []
-                for (let i = 0; i < this.pgn.moves.length; i++) {
-                    const move = this.pgn.moves[i]
-
+                for (let i = 0; i < this.pgn.moves.length; i += 2) {
                     moves.push({
-                        movenr: i + 1,
-                        white: move[0],
-                        black: move[1],
-                        prev: i !== this.pgn.moves.length - 1 ? false : (typeof move[1] === 'undefined' ? 'white' : 'black')
+                        movenr: Math.floor(i / 2 + 1),
+                        white: this.pgn.moves[i],
+                        black: this.pgn.moves[i + 1],
+                        prev: i >= this.pgn.moves.length - 2 ? (typeof this.pgn.moves[i + 1] === 'undefined' ? 'white' : 'black') : false
                     })
                 }
                 return moves
@@ -48,6 +48,17 @@
                 pgn: state => state.config.pgn,
                 fen: state => state.config.fen
             })
+        },
+
+        watch: {
+            fen: {
+                handler() {
+                    setTimeout(() => {
+                        $('.pgn').scrollTop($('.pgn').prop('scrollHeight'))
+                    }, 25)
+                },
+                deep: true
+            }
         },
 
         methods: {
@@ -69,11 +80,7 @@
     div#controls {
         width: 440px;
         height: 720px;
-        padding: 20px;
         float: left;
-        background-color: #fafafa;
-        box-shadow: 0 0 16px 5px rgba(0, 0, 0, 0.42),
-                    inset 0 0 2px rgba(0, 0, 0, 0.63);
         border-radius: 2px;
         box-sizing: border-box;
         font-family: 'OpenSans-Regular', arial, sans-serif;
@@ -96,7 +103,7 @@
         }
         div.pgn {
             width: 100%;
-            height: 280px;
+            height: 480px;
             overflow-x: hidden;
             overflow-y: auto;
             background-color: white;

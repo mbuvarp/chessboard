@@ -26,13 +26,11 @@
         height: 720px;
         margin-right: 36px;
         float: left;
-        padding: 6px;
-        background-color: #fafafa;
         text-shadow: 0px 0px 1px rgba(0, 0, 0, 0.5);
-        box-shadow: 0 0 16px 5px rgba(0, 0, 0, 0.42),
-                    inset 0 0 2px rgba(0, 0, 0, 0.63);
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.32);
         border-radius: 2px;
         box-sizing: border-box;
+        overflow: hidden;
     }
 
 </style>

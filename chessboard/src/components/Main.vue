@@ -29,13 +29,12 @@
     div#main {
         width: 100%;
         height: 100%;
-        background-color: burlywood;
-        background-image: linear-gradient(45deg, #c49f6d 25%, transparent 25%),
-                          linear-gradient(-45deg, #c49f6d 25%, transparent 25%),
-                          linear-gradient(45deg, transparent 75%, #c49f6d 75%),
-                          linear-gradient(-45deg, transparent 75%, #c49f6d 75%);
-        background-size: 320px 320px;
-        background-position: 0 0, 0 160px, 160px -160px, -160px 0px;
+        // background-color: burlywood;
+        // background-image: linear-gradient(45deg, #c49f6d 25%, transparent 25%),
+        //                   linear-gradient(-45deg, #c49f6d 25%, transparent 25%),
+        //                   linear-gradient(45deg, transparent 75%, #c49f6d 75%),
+        //                   linear-gradient(-45deg, transparent 75%, #c49f6d 75%);
+        background-image: linear-gradient(#dbe0e0, #eaefef 10%, #f7fcfc);
 
         &:after {
             display: block;
