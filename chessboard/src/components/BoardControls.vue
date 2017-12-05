@@ -3,7 +3,11 @@
     <div id="controls">
         <div class="pgn">
             <ul>
-                
+                <li v-for="move in movelist">
+                    <div class="movenr" v-text="move.movenr"></div>
+                    <div :class="{ 'halfmove': true, 'white': true, 'prev': move.prev === 'white' }" v-text="move.white"></div>
+                    <div :class="{ 'halfmove': true, 'black': true, 'prev': move.prev === 'black' }" v-text="move.black"></div>
+                </li>
             </ul>
         </div>
         <div class="fen">
@@ -26,7 +30,18 @@
 
         computed: {
             movelist() {
-                
+                const moves = []
+                for (let i = 0; i < this.pgn.moves.length; i++) {
+                    const move = this.pgn.moves[i]
+
+                    moves.push({
+                        movenr: i + 1,
+                        white: move[0],
+                        black: move[1],
+                        prev: i !== this.pgn.moves.length - 1 ? false : (typeof move[1] === 'undefined' ? 'white' : 'black')
+                    })
+                }
+                return moves
             },
 
             ...mapState({
@@ -54,7 +69,7 @@
     div#controls {
         width: 440px;
         height: 720px;
-        padding: 16px 20px;
+        padding: 20px;
         float: left;
         background-color: #fafafa;
         box-shadow: 0 0 16px 5px rgba(0, 0, 0, 0.42),
@@ -79,8 +94,56 @@
                 box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.32);
             }
         }
+        div.pgn {
+            width: 100%;
+            height: 280px;
+            overflow-x: hidden;
+            overflow-y: auto;
+            background-color: white;
+            border: 1px solid #bfbfbf;
+            box-shadow: 0 1px 3px 0px rgba(0, 0, 0, 0.32);
+            color: rgb(40, 60, 100);
+            box-sizing: border-box;
+
+            ul {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+                list-style-type: none;
+                box-sizing: border-box;
+
+                li {
+                    line-height: 1.7rem;
+
+                    div {
+                        display: inline-block;
+                        box-sizing: border-box;
+
+                        &.movenr {
+                            width: 16%;
+                            background-color: #eaeaea;
+                            color: #888;
+                            border-right: 1px solid #bfbfbf;
+                            text-align: center;
+                        }
+                        &.halfmove {
+                            width: 40%;
+
+                            &.white {
+                                border-right: 1px solid #bfbfbf;
+                            }
+                            &.prev {
+                                color: #e23516;
+                            }
+                        }
+                    }
+                }
+            }
+        }
         div.fen {
             width: 100%;
+            margin-top: 8px;
         }
     }
 

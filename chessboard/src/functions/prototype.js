@@ -14,7 +14,7 @@ export default function () {
     }
     String.prototype.getFile = getFileFromString
     function getFileNumFromString() {
-        return this.getFile().charCodeAt(0) - 64
+        return this.getFile().charCodeAt(0) - 96
     }
     String.prototype.getFileNum = getFileNumFromString
 
@@ -28,7 +28,7 @@ export default function () {
     String.prototype.getRankNum = getRankNumFromString
 
     function getFileLetterFromNum() {
-        return String.fromCharCode(64 + this)
+        return String.fromCharCode(96 + this)
     }
     Number.prototype.getFileLetter = getFileLetterFromNum
 }

@@ -82,7 +82,7 @@
                 pieces: [],
                 squares: [],
                 numbers: ['8', '7', '6', '5', '4', '3', '2', '1'],
-                letters: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'],
+                letters: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'],
 
                 currentPiece: null,
                 turn: 0,
@@ -136,7 +136,7 @@
             generateSquares() {
                 for (let y = 8; y > 0; --y) {
                     this.squares.push([])
-                    for (let x = 65; x < 73; ++x)
+                    for (let x = 97; x < 105; ++x)
                         this.squares[8 - y].push(String.fromCharCode(x) + y.toString())
                 }
             },
@@ -148,7 +148,7 @@
                         const type = officers[i]
                         const color = n === 0 ? 'W' : 'B'
                         const side = i < 3 ? 'Q' : (i > 4 ? 'K' : null)
-                        const letter = String.fromCharCode(65 + i)
+                        const letter = String.fromCharCode(97 + i)
                         const square = n === 0 ? `${letter}1` : `${letter}8`
 
                         const piece = new ChessPiece(type, color, side, square)
@@ -161,7 +161,7 @@
                         const type = 'P'
                         const color = n === 0 ? 'W' : 'B'
                         const side = null
-                        const letter = String.fromCharCode(65 + i)
+                        const letter = String.fromCharCode(97 + i)
                         const square = n === 0 ? `${letter}2` : `${letter}7`
 
                         const piece = new ChessPiece(type, color, side, square)
@@ -295,7 +295,7 @@
                     return
 
                 let capture = false
-                let castling = false
+                let castling = 0
 
                 // Check if there is a capture
                 if (this.squareIsOccupied(square, piece.opponent)) {
@@ -303,7 +303,7 @@
                     this.halfMove = -1
                     capture = true
                 } else if (square === this.enPassant && piece.type === 'P') {
-                    const epSquare = this.enPassant.substring(0, 1) + (parseInt(this.enPassant.substring(1, 2), 10) + (piece.color === 'W' ? -1 : 1))
+                    const epSquare = this.enPassant.getFile() + (this.enPassant.getRankNum() + (piece.color === 'W' ? -1 : 1))
                     this.capturePiece(this.getPieceBySquare(epSquare))
                     this.halfMove = -1
                     capture = true
@@ -322,7 +322,7 @@
                         const rookFile = direction ? 'H' : 'A'
                         const rook = this.getPieceBySquare(`${rookFile}${rank}`)
                         rook.square = direction ? `F${rank}` : `D${rank}`
-                        castling = true
+                        castling = direction ? 1 : 2
                     }
                 }
 
@@ -349,7 +349,7 @@
 
                 // Check for en passant
                 if (piece.type === 'P' && Math.abs(square.charCodeAt(1) - prevSquare.charCodeAt(1)) > 1)
-                    this.enPassant = String.fromCharCode(square.charCodeAt(0)) + (parseInt(square.substring(1, 2), 10) + (piece.color === 'W' ? -1 : 1))
+                    this.enPassant = String.fromCharCode(square.charCodeAt(0)) + (square.getRankNum() + (piece.color === 'W' ? -1 : 1))
                 else
                     this.enPassant = null
 
@@ -429,19 +429,21 @@
                     if (self.boardConfig.highlight.move)
                         self.highlightedSquares.move = [prevSquare, square]
                     
-                    // Update FEN, PGN and find new legal moves
-                    self.updateConfigFEN(self.createFEN())
-                    self.updateConfigPGN(piece.type, square, prevSquare, capture, castling, pgnFile, pgnRank)
+                    // Find new legal moves
                     self.findAllLegalMoves()
 
                     if (self.check) {
                         self.checkmate = self.lookForCheckMate(self.turn === 0 ? 'W' : 'B', true)
                         // TODO what to do on mate
                     }
+
+                    // Update FEN, PGN and find new legal moves
+                    self.updateConfigFEN(self.createFEN())
+                    self.updateConfigPGN(piece.type, square, prevSquare, capture, castling, self.check, self.checkmate, pgnFile, pgnRank)
                 }
 
                 // Check for promotion
-                if (piece.type === 'P' && piece.square.substring(1, 2) === (piece.color === 'W' ? '8' : '1')) {
+                if (piece.type === 'P' && piece.square.getRank() === (piece.color === 'W' ? '8' : '1')) {
                     this.promote(piece, square)
                     const unwatch = this.$watch('promoting', function (value) {
                         if (!value)
@@ -464,7 +466,7 @@
                 this.promoting = true
 
                 // Set promoter style
-                const file = Math.abs(square.charCodeAt(0) - (this.boardConfig.flipped ? 73 : 64))
+                const file = Math.abs(square.getFileNum() - (this.boardConfig.flipped ? 105 : 96))
                 const toRight = file > 5
                 let left = squareElement.offset().left
                 if (toRight)
@@ -498,8 +500,8 @@
                         this.pieces[i].legalMoves = this.findLegalMovesForPiece(this.pieces[i])
 
                 if (!nocheck) {
-                    const onFileor = this.turn ? 'B' : 'W'
-                    const check = this.lookForCheck(true, onFileor)
+                    const onColor = this.turn ? 'B' : 'W'
+                    const check = this.lookForCheck(true, onColor)
                     this.check = check.length > 0
                     this.checkingPieces = check
                 }
@@ -508,17 +510,17 @@
                 // TODO check if can move, e.g. if there is a discovered check
 
                 // Function to get letter from file number
-                const lfc = file => String.fromCharCode(64 + file)
+                const lfc = file => String.fromCharCode(96 + file)
                 // Function to get square from numbers
                 const sfn = (file, rank) => `${lfc(file)}${rank}`
                 // Function to get numbers from square
-                const stn = sqr => [sqr.charCodeAt(0) - 64, parseInt(sqr.substring(1, 2), 10)]
+                const stn = sqr => [sqr.charCodeAt(0) - 96, sqr.getRankNum()]
 
                 let legalMoves = []
 
-                const letter = piece.square.substring(0, 1)
-                const file = letter.charCodeAt(0) - 64
-                const rank = parseInt(piece.square.substring(1, 2), 10)
+                const letter = piece.square.getFile()
+                const file = piece.square.getFileNum()
+                const rank = piece.square.getRankNum()
 
                 if (piece.type === 'P') {
                     if (piece.color === 'W') {
@@ -882,30 +884,30 @@
                     // Castling
                     if (piece.color === 'W') {
                         if (this.castling.whiteKing &&
-                            !this.squareIsOccupied('F1') &&
-                            !this.squareIsOccupied('G1') &&
-                            !this.squareIsAttacked('F1', piece.opponent) &&
-                            !this.squareIsAttacked('G1', piece.opponent))
-                            legalMoves.push('G1')
+                            !this.squareIsOccupied('f1') &&
+                            !this.squareIsOccupied('g1') &&
+                            !this.squareIsAttacked('f1', piece.opponent) &&
+                            !this.squareIsAttacked('g1', piece.opponent))
+                            legalMoves.push('g1')
                         if (this.castling.whiteQueen &&
-                            !this.squareIsOccupied('C1') &&
-                            !this.squareIsOccupied('D1') &&
-                            !this.squareIsAttacked('C1', piece.opponent) &&
-                            !this.squareIsAttacked('D1', piece.opponent))
-                            legalMoves.push('C1')
+                            !this.squareIsOccupied('c1') &&
+                            !this.squareIsOccupied('d1') &&
+                            !this.squareIsAttacked('c1', piece.opponent) &&
+                            !this.squareIsAttacked('d1', piece.opponent))
+                            legalMoves.push('d1')
                     } else {
                         if (this.castling.blackKing &&
-                            !this.squareIsOccupied('F8') &&
-                            !this.squareIsOccupied('G8') &&
-                            !this.squareIsAttacked('F8', piece.opponent) &&
-                            !this.squareIsAttacked('G8', piece.opponent))
-                            legalMoves.push('G8')
+                            !this.squareIsOccupied('f8') &&
+                            !this.squareIsOccupied('g8') &&
+                            !this.squareIsAttacked('f8', piece.opponent) &&
+                            !this.squareIsAttacked('g8', piece.opponent))
+                            legalMoves.push('g8')
                         if (this.castling.blackQueen &&
-                            !this.squareIsOccupied('C8') &&
-                            !this.squareIsOccupied('D8') &&
-                            !this.squareIsAttacked('C8', piece.opponent) &&
-                            !this.squareIsAttacked('D8', piece.opponent))
-                            legalMoves.push('C8')
+                            !this.squareIsOccupied('c8') &&
+                            !this.squareIsOccupied('d8') &&
+                            !this.squareIsAttacked('c8', piece.opponent) &&
+                            !this.squareIsAttacked('d8', piece.opponent))
+                            legalMoves.push('c8')
                     }
 
                     legalMoves.removeIf(sqr => this.squareIsOccupied(sqr, piece.color))
@@ -913,18 +915,18 @@
 
                 return legalMoves
             },
-            lookForCheck(returnPieces, onFileor) {
+            lookForCheck(returnPieces, onColor) {
                 if (typeof returnPieces === 'undefined')
                     returnPieces = false
 
                 // Check to see if king square is attacked
-                const king = this.pieces.find(piece => piece.color === onFileor && piece.type === 'K')
+                const king = this.pieces.find(piece => piece.color === onColor && piece.type === 'K')
 
                 if (typeof king === 'undefined')
                     // TODO invalid game
                     return false
 
-                return this.squareIsAttacked(king.square, onFileor === 'W' ? 'B' : 'W', returnPieces)
+                return this.squareIsAttacked(king.square, onColor === 'W' ? 'B' : 'W', returnPieces)
             },
             lookForCheckIf(fromSquare, toSquare) {
                 const piece = this.getPieceBySquare(fromSquare)
@@ -949,13 +951,13 @@
                 this.findAllLegalMoves(false)
                 return check
             },
-            lookForCheckMate(onFileor, checkedForCheck) {
-                const isCheck = checkedForCheck || this.lookForCheck(true, onFileor)
+            lookForCheckMate(onColor, checkedForCheck) {
+                const isCheck = checkedForCheck || this.lookForCheck(true, onColor)
                 if (isCheck !== true && isCheck.length === 0)
                     return false
                 const checkingPieces = isCheck === true ? this.checkingPieces : isCheck
 
-                const king = this.pieces.find(piece => piece.color === onFileor && piece.type === 'K')
+                const king = this.pieces.find(piece => piece.color === onColor && piece.type === 'K')
                 if (typeof king === 'undefined')
                     // TODO invalid game
                     return false
@@ -973,7 +975,7 @@
 
                 // See if checking piece can be captured
                 const checkingPieceSquare = checkingPieces[0].square
-                const attackedBy = this.squareIsAttacked(checkingPieceSquare, onFileor, true)
+                const attackedBy = this.squareIsAttacked(checkingPieceSquare, onColor, true)
                 if (attackedBy.length > 0) {
                     // See if one of the attacking pieces can move
                     for (let i = 0; i < attackedBy.length; i++) {
@@ -992,7 +994,7 @@
 
                 // Check if any piece can move into one of the squares between attacking piece and king.
                 const squaresBetween = this.getSquaresBetween(checkingPieceSquare, king.square)
-                const pieces = this.pieces.filter(piece => !piece.is_captured && piece.color === onFileor)
+                const pieces = this.pieces.filter(piece => !piece.is_captured && piece.color === onColor)
                 for (let p = 0; p < pieces.length; p++) {
                     const piece = pieces[p]
                     // If piece is king, then that doesn't count, obviously
@@ -1018,12 +1020,12 @@
                     return typeof piece !== 'undefined' && piece.color === color && !piece.is_captured
                 return typeof piece !== 'undefined' && !piece.is_captured
             },
-            squareIsAttacked(square, byFileor, returnPieces) {
+            squareIsAttacked(square, byColor, returnPieces) {
                 if (typeof returnPieces === 'undefined')
                     returnPieces = false
 
                 const attackingPieces = []
-                const pieces = this.pieces.filter(piece => piece.color === byFileor && !piece.is_captured)
+                const pieces = this.pieces.filter(piece => piece.color === byColor && !piece.is_captured)
 
                 for (let i = 0; i < pieces.length; i++) {
                     const piece = pieces[i]
@@ -1036,7 +1038,7 @@
                         const pawnFile = piece.square.charCodeAt(0)
                         const pawnLeft = String.fromCharCode(pawnFile - 1)
                         const pawnRight = String.fromCharCode(pawnFile + 1)
-                        const pawnRank = parseInt(piece.square.substring(1, 2), 10)
+                        const pawnRank = piece.square.getRankNum()
                         const attackRank = pawnRank + (piece.color === 'W' ? 1 : -1)
                         const pawnThreat = [
                             `${pawnLeft}${attackRank}`,
@@ -1151,7 +1153,7 @@
                     let rankStr = ''
                     let empty = 0
                     // Iterate over files, from A
-                    for (let c = 65; c <= 72; ++c) {
+                    for (let c = 97; c <= 104; ++c) {
                         const letter = String.fromCharCode(c)
                         const piece = this.getPieceBySquare(`${letter}${r}`)
                         if (typeof piece === 'undefined')
@@ -1187,13 +1189,18 @@
 
                 return fen
             },
-            updateConfigPGN(type, square, prevSquare, capture, castling, pgnFile, pgnRank) {
+            updateConfigPGN(type, square, prevSquare, capture, castling, check, checkmate, pgnFile, pgnRank) {
                 let pgn = ''
-                pgn += type === 'P' ? (capture ? prevSquare.getFile() : '') : type
-                pgn += pgnFile || ''
-                pgn += pgnRank || ''
-                pgn += capture ? 'x' : ''
-                pgn += square
+                if (castling === 0) {
+                    pgn += type === 'P' ? (capture ? prevSquare.getFile() : '') : type
+                    pgn += pgnFile || ''
+                    pgn += pgnRank || ''
+                    pgn += capture ? 'x' : ''
+                    pgn += square
+                    pgn += check && !checkmate ? '+' : ''
+                    pgn += checkmate ? '#' : ''
+                } else
+                    pgn += castling === 1 ? 'O-O' : 'O-O-O'
                 this.addPGNMove(pgn)
             },
 
