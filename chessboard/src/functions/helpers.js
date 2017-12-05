@@ -9,6 +9,18 @@ const Helpers = {
                     }
                 }
                 return null
+            },
+
+            numbersBetween(low, high) {
+                if (low > high) {
+                    const temp = low
+                    low = high
+                    high = temp
+                }
+                const n = []
+                for (let i = low + 1; i < high; i++)
+                    n.push(i)
+                return n
             }
         }
 

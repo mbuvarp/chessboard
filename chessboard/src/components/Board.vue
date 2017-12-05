@@ -87,6 +87,8 @@
                 currentPiece: null,
                 turn: 0,
                 check: false,
+                checkmate: false,
+                checkingPieces: [],
                 enPassant: null,
                 promoting: false,
                 promotion: null,
@@ -307,11 +309,11 @@
 
                 // Check for castling
                 if (piece.type === 'K') {
-                    const rank = square.substring(1, 2)
-                    const isCastling = rank === prevSquare.substring(1, 2) && // Same rank
-                          Math.abs(square.charCodeAt(0) - prevSquare.charCodeAt(0)) === 2 // Moves two squares
+                    const rank = square.getRank()
+                    const isCastling = rank === prevSquare.getRank() && // Same rank
+                          Math.abs(square.getColNum() - prevSquare.getColNum()) === 2 // Moves two squares
                     if (isCastling) {
-                        const direction = square.charCodeAt(0) > prevSquare.charCodeAt(0) // true = kingside
+                        const direction = square.getColNum() > prevSquare.getColNum() // true = kingside
                         const rookCol = direction ? 'H' : 'A'
                         const rook = this.getPieceBySquare(`${rookCol}${rank}`)
                         rook.square = direction ? `F${rank}` : `D${rank}`
@@ -354,6 +356,7 @@
                     self.turn = self.turn === 0 ? 1 : 0
 
                     self.check = false
+                    self.checkingPieces = []
 
                     if (self.boardConfig.highlight.move)
                         self.highlightedSquares.move = [prevSquare, square]
@@ -361,6 +364,10 @@
                     // Update FEN and find new legal moves
                     self.updateConfigFEN(self.createFEN())
                     self.findAllLegalMoves()
+
+                    if (self.check) {
+                        self.checkmate = self.lookForCheckMate(self.turn === 0 ? 'W' : 'B', true)
+                    }
                 }
 
                 // Check for promotion
@@ -420,8 +427,12 @@
                     if (!this.pieces[i].is_captured)
                         this.pieces[i].legalMoves = this.findLegalMovesForPiece(this.pieces[i])
 
-                if (!nocheck)
-                    this.check = this.lookForCheck()
+                if (!nocheck) {
+                    const onColor = this.turn ? 'B' : 'W'
+                    const check = this.lookForCheck(true, onColor)
+                    this.check = check.length > 0
+                    this.checkingPieces = check
+                }
             },
             findLegalMovesForPiece(piece) {
                 // TODO check if can move, e.g. if there is a discovered check
@@ -832,16 +843,18 @@
 
                 return legalMoves
             },
-            lookForCheck() {
-                // Check to see if king square is attacked
-                const whiteKing = this.pieces.find(piece => piece.color === 'W' && piece.type === 'K')
-                const blackKing = this.pieces.find(piece => piece.color === 'B' && piece.type === 'K')
+            lookForCheck(returnPieces, onColor) {
+                if (typeof returnPieces === 'undefined')
+                    returnPieces = false
 
-                if (typeof whiteKing === 'undefined' || typeof blackKing === 'undefined')
+                // Check to see if king square is attacked
+                const king = this.pieces.find(piece => piece.color === onColor && piece.type === 'K')
+
+                if (typeof king === 'undefined')
                     // TODO invalid game
                     return false
 
-                return this.squareIsAttacked(whiteKing.square, 'B') || this.squareIsAttacked(blackKing.square, 'W')
+                return this.squareIsAttacked(king.square, onColor === 'W' ? 'B' : 'W', returnPieces)
             },
             lookForCheckIf(fromSquare, toSquare) {
                 const piece = this.getPieceBySquare(fromSquare)
@@ -854,9 +867,10 @@
                 if (typeof pieceOnTarget !== 'undefined')
                     pieceOnTarget.is_captured = true
 
+                this.findAllLegalMoves(true)
                 piece.square = toSquare
                 this.findAllLegalMoves(true)
-                const check = this.lookForCheck()
+                const check = this.lookForCheck(false, piece.color)
 
                 // Reset
                 if (typeof pieceOnTarget !== 'undefined')
@@ -865,42 +879,161 @@
                 this.findAllLegalMoves(false)
                 return check
             },
-            squareIsOccupied(square, color) {
-                const piece = this.getPieceBySquare(square)
-                if (color)
-                    return typeof piece !== 'undefined' && piece.color === color
-                return typeof piece !== 'undefined'
-            },
-            squareIsAttacked(square, color) {
-                for (let i = 0; i < this.pieces.length; i++) {
-                    const piece = this.pieces[i]
-                    if (piece.is_captured)
-                        continue
-                    if (piece.color === color) {
-                        if (piece.type !== 'P' && piece.legalMoves.includes(square))
-                            return true
-                        else {
-                            const pawnCol = piece.square.charCodeAt(0)
-                            const pawnLeft = String.fromCharCode(pawnCol - 1)
-                            const pawnRight = String.fromCharCode(pawnCol + 1)
-                            const pawnRank = parseInt(piece.square.substring(1, 2), 10)
-                            const attackRank = pawnRank + (piece.color === 'W' ? 1 : -1)
-                            const pawnThreat = [
-                                `${pawnLeft}${attackRank}`,
-                                `${pawnRight}${attackRank}`
-                            ]
-                            if (pawnThreat.includes(square))
-                                return true
+            lookForCheckMate(onColor, checkedForCheck) {
+                const isCheck = checkedForCheck || this.lookForCheck(true, onColor)
+                if (isCheck !== true && isCheck.length === 0)
+                    return false
+                const checkingPieces = isCheck === true ? this.checkingPieces : isCheck
+
+                const king = this.pieces.find(piece => piece.color === onColor && piece.type === 'K')
+                if (typeof king === 'undefined')
+                    // TODO invalid game
+                    return false
+
+                // Can king move out of check?
+                for (let i = 0; i < king.legalMoves.length; i++) {
+                    const targetSquare = king.legalMoves[i]
+                    if (!this.lookForCheckIf(king.square, targetSquare))
+                        return false
+                }
+
+                // If there are two, checking pieces and king couldn't move out of check, then there is a checkmate
+                if (checkingPieces.length === 2)
+                    return true
+
+                // See if checking piece can be captured
+                const checkingPieceSquare = checkingPieces[0].square
+                const attackedBy = this.squareIsAttacked(checkingPieceSquare, onColor, true)
+                if (attackedBy.length > 0) {
+                    // See if one of the attacking pieces can move
+                    for (let i = 0; i < attackedBy.length; i++) {
+                        const attacker = attackedBy[i]
+                        if (!this.lookForCheckIf(attacker.square, checkingPieceSquare)) {
+                            return false
                         }
                     }
                 }
-                return false
+
+                // So, none of the pieces attacking the checking piece can move. A piece has to block the check, in other words.
+                // If the checking piece is a knight or a pawn, all is lost
+                const checkingPieceType = checkingPieces[0].type
+                if (checkingPieceType === 'N' || checkingPieceType === 'P')
+                    return true
+
+                // Check if any piece can move into one of the squares between attacking piece and king.
+                const squaresBetween = this.getSquaresBetween(checkingPieceSquare, king.square)
+                const pieces = this.pieces.filter(piece => !piece.is_captured && piece.color === onColor)
+                for (let p = 0; p < pieces.length; p++) {
+                    const piece = pieces[p]
+                    // If piece is king, then that doesn't count, obviously
+                    if (piece.type === 'K')
+                        continue
+                    for (let s = 0; s < squaresBetween.length; s++) {
+                        const square = squaresBetween[s]
+                        if (piece.legalMoves.includes(square))
+                            return false
+                    }
+                }
+
+                return true
             },
 
             // ----------------------------------------
             // FIND SQUARES AND PIECES
             // ----------------------------------------
 
+            squareIsOccupied(square, color) {
+                const piece = this.getPieceBySquare(square)
+                if (color)
+                    return typeof piece !== 'undefined' && piece.color === color && !piece.is_captured
+                return typeof piece !== 'undefined' && !piece.is_captured
+            },
+            squareIsAttacked(square, byColor, returnPieces) {
+                if (typeof returnPieces === 'undefined')
+                    returnPieces = false
+
+                const attackingPieces = []
+                const pieces = this.pieces.filter(piece => piece.color === byColor && !piece.is_captured)
+
+                for (let i = 0; i < pieces.length; i++) {
+                    const piece = pieces[i]
+                    if (piece.type !== 'P' && piece.legalMoves.includes(square)) {
+                        if (!returnPieces)
+                            return true
+                        else
+                            attackingPieces.push(piece)
+                    } else if (piece.type === 'P') {
+                        const pawnCol = piece.square.charCodeAt(0)
+                        const pawnLeft = String.fromCharCode(pawnCol - 1)
+                        const pawnRight = String.fromCharCode(pawnCol + 1)
+                        const pawnRank = parseInt(piece.square.substring(1, 2), 10)
+                        const attackRank = pawnRank + (piece.color === 'W' ? 1 : -1)
+                        const pawnThreat = [
+                            `${pawnLeft}${attackRank}`,
+                            `${pawnRight}${attackRank}`
+                        ]
+                        if (pawnThreat.includes(square))
+                            if (!returnPieces)
+                                return true
+                            else
+                                attackingPieces.push(piece)
+                    }
+                }
+
+                return returnPieces && attackingPieces.length > 0 ? attackingPieces : false
+            },
+            getSquaresBetween(sourceSquare, targetSquare) {
+                if (sourceSquare === targetSquare)
+                    return []
+
+                let sourceCol = sourceSquare.getColNum()
+                let sourceRank = sourceSquare.getRankNum()
+                let targetCol = targetSquare.getColNum()
+                let targetRank = targetSquare.getRankNum()
+                // Switch source and target so that source is left of target
+                if (sourceCol > targetCol) {
+                    const tempSourceCol = sourceCol
+                    const tempSourceRank = sourceRank
+                    sourceCol = targetCol
+                    sourceRank = targetRank
+                    targetCol = tempSourceCol
+                    targetRank = tempSourceRank
+                }
+                const sourceColLetter = sourceSquare.getCol()
+
+                const between = []
+
+                if (sourceCol === targetCol) {
+                    // If same col
+                    this.$helpers.numbersBetween(sourceRank, targetRank).forEach(rank => {
+                        between.push(`${sourceColLetter}${rank}`)
+                    })
+                } else if (sourceRank === targetRank) {
+                    // If same rank
+                    this.$helpers.numbersBetween(sourceCol, targetCol).forEach(col => {
+                        const letter = col.getColLetter()
+                        between.push(`${letter}${sourceRank}`)
+                    })
+                } else {
+                    // If diagonal
+                    const colsBetween = this.$helpers.numbersBetween(sourceCol, targetCol)
+                    const ranksBetween = this.$helpers.numbersBetween(sourceRank, targetRank)
+
+                    // Sort arrays according to direction
+                    if (sourceRank > targetRank && sourceCol < targetCol)
+                        ranksBetween.sort((a, b) => a < b)
+
+                    // Should be same length unless function is used incorrectly, but just to be sure
+                    const min = Math.min(colsBetween.length, ranksBetween.length)
+                    for (let i = 0; i < min; i++) {
+                        const letter = colsBetween[i].getColLetter()
+                        const rank = ranksBetween[i]
+                        between.push(`${letter}${rank}`)
+                    }
+                }
+
+                return between
+            },
             squareElementByDescriptor(desc) {
                 const square = $(`.square[data-square="${desc}"]`)
                 return square.length ? square : null
@@ -912,6 +1045,7 @@
             // ----------------------------------------
             // BOARD VISUALS
             // ----------------------------------------
+
             getPieceImagePath(square) {
                 const piece = this.getPieceBySquare(square)
                 if (!piece)
@@ -938,6 +1072,7 @@
             // ----------------------------------------
             // CONFIGURATION
             // ----------------------------------------
+
             createFEN() {
                 let fen = ''
 
@@ -989,7 +1124,6 @@
             keyDown(evt) {
                 switch (evt.key.toLowerCase()) {
                 case 't':
-                    this.createFEN()
                     break;
                 default:
                     break;
