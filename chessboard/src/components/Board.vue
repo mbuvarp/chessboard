@@ -68,7 +68,7 @@
 <script>
     import Vue from 'vue'
     import { mapState, mapMutations } from 'vuex'
-    import ChessPiece from '../assets/libs/chesspiece'
+    import ChessPiece from '../assets/classes/chesspiece'
 
     const $ = require('jquery')
     
@@ -124,7 +124,9 @@
             this.generatePieces()
             this.findAllLegalMoves()
 
-            document.addEventListener('keydown', this.keyDown)
+            $(document).on('keydown', this.keyDown)
+
+            this.$bus.$on('step', this.moveStep)
 
             Vue.nextTick(() => {
                 this.initInteract()
@@ -444,6 +446,9 @@
                     // Update FEN, PGN and find new legal moves
                     self.updateConfigFEN(self.createFEN())
                     self.updateConfigPGN(piece.type, square, prevSquare, capture, castling, self.check, self.checkmate, pgnFile, pgnRank)
+
+                    // Emit move event
+                    self.$bus.$emit('halfmove')
                 }
 
                 // Check for promotion
@@ -1155,7 +1160,6 @@
                 return this.highlightedSquares.marked.includes(square)
             },
 
-
             // ----------------------------------------
             // CONFIGURATION
             // ----------------------------------------
@@ -1220,8 +1224,12 @@
             },
 
             // ----------------------------------------
-            // OTHER
+            // MOVE NAVIGATION
             // ----------------------------------------
+
+            moveStep(direction) {
+                
+            },
             animatedMove(sourceSquare, targetSquare) {
                 const sourceSquareElement = this.getSquareElementByDescriptor(sourceSquare)
                 if (typeof sourceSquareElement === 'undefined')
@@ -1243,14 +1251,16 @@
                 const deltaX = targetX - sourceX
                 const deltaY = targetY - sourceY
 
-                // Animate
-                pieceElement.animate({
+                // Animate and return promise
+                return pieceElement.animate({
                     left: deltaX,
                     top: deltaY
-                }, 100, 'linear')
-
-                return null
+                }, 100, 'linear').promise()
             },
+
+            // ----------------------------------------
+            // OTHER
+            // ----------------------------------------
             squareMouseDown(evt) {
                 if (evt.button !== 2)
                     return

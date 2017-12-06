@@ -3,14 +3,25 @@
     <div id="controls">
         <div class="moves">
             <ul>
-                <li v-for="move in movelist">
-                    <div class="movenr" v-text="move.movenr"></div>
-                    <div :class="{ 'halfmove': true, 'white': true, 'prev': move.prev === 'white' }" v-text="move.white"></div>
-                    <div :class="{ 'halfmove': true, 'black': true, 'prev': move.prev === 'black' }" v-text="move.black"></div>
+                <li v-for="(move, index) in movelist">
+                    <div class="movenr" v-text="index + 1"></div>
+                    <div
+                        :class="{ 'halfmove': true, 'white': true, 'current': index * 2 + 1 === currentHalfMove }"
+                        v-text="move[0]"
+                    ></div>
+                    <div
+                        :class="{ 'halfmove': true, 'black': true, 'current': index * 2 + 2 === currentHalfMove }"
+                        v-text="move[1]"
+                    ></div>
                 </li>
             </ul>
             <div class="move-nav">
-                
+                <icon name="fast-backward"></icon>
+                <icon name="step-backward" @click="step('backward')"></icon>
+                <icon name="play"></icon>
+                <icon name="pause"></icon>
+                <icon name="step-forward" @click="step('forward')"></icon>
+                <icon name="fast-forward"></icon>
             </div>
         </div>
         <div class="fen">
@@ -23,27 +34,29 @@
 
 <script>
     import { mapState, mapMutations } from 'vuex'
+    import 'vue-awesome/icons/step-backward'
+    import 'vue-awesome/icons/step-forward'
+    import 'vue-awesome/icons/fast-backward'
+    import 'vue-awesome/icons/fast-forward'
+    import 'vue-awesome/icons/play'
+    import 'vue-awesome/icons/pause'
 
     const $ = require('jquery')
 
     export default {
         name: 'BoardControls',
         
-        components: {
-
+        data() {
+            return {
+                currentHalfMove: 0,
+            }
         },
 
         computed: {
             movelist() {
                 const moves = []
-                for (let i = 0; i < this.pgn.moves.length; i += 2) {
-                    moves.push({
-                        movenr: Math.floor(i / 2 + 1),
-                        white: this.pgn.moves[i],
-                        black: this.pgn.moves[i + 1],
-                        prev: i >= this.pgn.moves.length - 2 ? (typeof this.pgn.moves[i + 1] === 'undefined' ? 'white' : 'black') : false
-                    })
-                }
+                for (let i = 0; i < this.pgn.moves.length; i += 2)
+                    moves.push([this.pgn.moves[i], this.pgn.moves[i + 1]])
                 return moves
             },
 
@@ -64,7 +77,18 @@
             }
         },
 
+        mounted() {
+            this.$bus.$on('halfmove', this.halfMoveHandler)
+        },
+
         methods: {
+            halfMoveHandler() {
+                ++this.currentHalfMove
+            },
+            step(direction) {
+                this.$bus.$emit('step', { direction })
+            },
+
             ...mapMutations([
                 'updateConfigFEN'
             ])
@@ -144,7 +168,7 @@
                             &.white {
                                 border-right: 1px solid #cfcfcf;
                             }
-                            &.prev {
+                            &.current {
                                 color: #e23516;
                             }
                         }
@@ -156,6 +180,19 @@
                 height: 36px;
                 border-top: 1px solid #cfcfcf;
                 background-color: #eaeaea;
+                user-select: none;
+
+                .fa-icon {
+                    width: auto;
+                    height: 20px;
+                    margin-top: 8px;
+                    margin-left: 10px;
+                    color: #646470;
+
+                    &:hover {
+                        color: #9393a0;
+                    }
+                }
             }
         }
         div.fen {

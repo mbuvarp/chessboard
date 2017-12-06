@@ -15,7 +15,6 @@ class ChessPiece {
 
     capture() {
         this.is_captured = true
-        this.square = null
         this.legalMoves = []
     }
 
