@@ -115,7 +115,8 @@
 
         computed: {
             ...mapState({
-                boardConfig: state => state.config.board
+                boardConfig: state => state.config.board,
+                halfmoves: state => state.halfmoves
             })
         },
 
@@ -300,19 +301,19 @@
                 if (piece.square === square)
                     return
 
-                let capture = false
+                let captured = null
                 let castling = 0
 
                 // Check if there is a capture
                 if (this.squareIsOccupied(square, piece.opponent)) {
-                    this.capturePiece(this.getPieceBySquare(square))
+                    captured = this.getPieceBySquare(square)
+                    this.capturePiece(captured)
                     this.halfMove = -1
-                    capture = true
                 } else if (square === this.enPassant && piece.type === 'P') {
                     const epSquare = this.enPassant.getFile() + (this.enPassant.getRankNum() + (piece.color === 'W' ? -1 : 1))
-                    this.capturePiece(this.getPieceBySquare(epSquare))
+                    captured = this.getPieceBySquare(epSquare)
+                    this.capturePiece(captured)
                     this.halfMove = -1
-                    capture = true
                 }
 
                 const prevSquare = piece.square
@@ -445,10 +446,17 @@
 
                     // Update FEN, PGN and find new legal moves
                     self.updateConfigFEN(self.createFEN())
-                    self.updateConfigPGN(piece.type, square, prevSquare, capture, castling, self.check, self.checkmate, pgnFile, pgnRank)
+                    self.updateConfigPGN(piece.type, square, prevSquare, captured !== null, castling, self.check, self.checkmate, pgnFile, pgnRank)
 
                     // Emit move event
-                    self.$bus.$emit('halfmove')
+                    self.$bus.$emit('halfmove', {
+                        piece,
+                        source: prevSquare,
+                        target: square,
+                        captured,
+                        castling,
+                        check: self.check
+                    })
                 }
 
                 // Check for promotion
@@ -1128,7 +1136,7 @@
                 return $('.piece', $(squareElement))
             },
             getPieceBySquare(square) {
-                return this.pieces.find(piece => piece.square === square)
+                return this.pieces.find(piece => piece.square === square && !piece.is_captured)
             },
 
             // ----------------------------------------
@@ -1227,8 +1235,36 @@
             // MOVE NAVIGATION
             // ----------------------------------------
 
-            moveStep(direction) {
-                
+            moveStep(evt) {
+                const halfmove = this.halfmoves[evt.halfmove + (evt.direction ? 0 : -1)]
+                if (typeof halfmove === 'undefined')
+                    return
+
+                const source = evt.direction ? halfmove.source : halfmove.target
+                const target = evt.direction ? halfmove.target : halfmove.source
+
+                this.animatedMove(source, target).done(() => {
+                    halfmove.piece.square = target
+
+                    if (halfmove.captured !== null) {
+                        // Reset captive
+                        halfmove.captured.is_captured = evt.direction
+                        const captivePieceElement = this.getPieceElementBySquare(source)
+                        if (typeof captivePieceElement !== 'undefined')
+                            captivePieceElement.css({
+                                left: 0,
+                                top: 0
+                            })
+                    }
+
+                    // Set highlighted squares
+                    if (evt.direction)
+                        this.highlightedSquares.move = [source, target]
+                    else {
+                        const prevHalfmove = this.halfmoves[evt.halfmove - 2]
+                        this.highlightedSquares.move = typeof prevHalfmove === 'undefined' ? [] : [prevHalfmove.source, prevHalfmove.target]
+                    }
+                })
             },
             animatedMove(sourceSquare, targetSquare) {
                 const sourceSquareElement = this.getSquareElementByDescriptor(sourceSquare)
@@ -1255,7 +1291,7 @@
                 return pieceElement.animate({
                     left: deltaX,
                     top: deltaY
-                }, 100, 'linear').promise()
+                }, 80, 'linear').promise()
             },
 
             // ----------------------------------------

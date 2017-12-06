@@ -5,6 +5,7 @@ Vue.use(Vuex)
 
 export default new Vuex.Store({
     state: {
+        halfmoves: [],
         config: {
             fen: '',
             pgn: {
@@ -53,6 +54,9 @@ export default new Vuex.Store({
         },
         addPGNMove(state, move) {
             state.config.pgn.moves.push(move)
+        },
+        addHalfMove(state, move) {
+            state.halfmoves.push(move)
         }
     },
 })

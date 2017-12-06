@@ -16,12 +16,12 @@
                 </li>
             </ul>
             <div class="move-nav">
-                <icon name="fast-backward"></icon>
-                <icon name="step-backward" @click="step('backward')"></icon>
-                <icon name="play"></icon>
-                <icon name="pause"></icon>
-                <icon name="step-forward" @click="step('forward')"></icon>
-                <icon name="fast-forward"></icon>
+                <div @click=""><icon name="fast-backward"></icon></div>
+                <div @click="step(false)"><icon name="step-backward"></icon></div>
+                <div @click=""><icon name="play"></icon></div>
+                <div @click=""><icon name="pause"></icon></div>
+                <div @click="step(true)"><icon name="step-forward"></icon></div>
+                <div @click=""><icon name="fast-forward"></icon></div>
             </div>
         </div>
         <div class="fen">
@@ -62,7 +62,8 @@
 
             ...mapState({
                 pgn: state => state.config.pgn,
-                fen: state => state.config.fen
+                fen: state => state.config.fen,
+                halfmoves: state => state.halfmoves
             })
         },
 
@@ -82,15 +83,25 @@
         },
 
         methods: {
-            halfMoveHandler() {
+            halfMoveHandler(move) {
                 ++this.currentHalfMove
+                this.addHalfMove(move)
             },
             step(direction) {
-                this.$bus.$emit('step', { direction })
+                this.$bus.$emit('step', {
+                    direction,
+                    halfmove: this.currentHalfMove
+                })
+
+                if (direction && this.currentHalfMove < this.halfmoves.length)
+                    ++this.currentHalfMove
+                else if (!direction && this.currentHalfMove > 0)
+                    --this.currentHalfMove
             },
 
             ...mapMutations([
-                'updateConfigFEN'
+                'updateConfigFEN',
+                'addHalfMove'
             ])
         }
     };
@@ -102,6 +113,11 @@
     @font-face {
         font-family: 'OpenSans-Regular';
         src: url('/static/fonts/OpenSans/OpenSans-Regular.ttf') format('truetype');        
+    }
+    @keyframes rolling { 
+        0% { background-position: 0% 19% }
+        50% { background-position: 100% 82% }
+        100% { background-position: 0% 19% }
     }
 
     div#controls {
@@ -119,10 +135,13 @@
         input[type="text"] {
             width: 100%;
             box-sizing: border-box;
-            padding: 3px 4px;
+            padding: 4px 5px;
             border: 1px solid #bfbfbf;
             box-shadow: 0 1px 3px 0px rgba(0, 0, 0, 0.32);
-            color: rgb(40, 60, 100);
+            color: rgb(65, 88, 107);
+            background: linear-gradient(270deg, #effaff, #ffffff);
+            background-size: 400% 400%;
+            animation: rolling 30s ease infinite;
 
             &:hover {
                 box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.32);
@@ -164,6 +183,7 @@
                         }
                         &.halfmove {
                             width: 40%;
+                            cursor: default;
 
                             &.white {
                                 border-right: 1px solid #cfcfcf;
@@ -182,15 +202,19 @@
                 background-color: #eaeaea;
                 user-select: none;
 
-                .fa-icon {
-                    width: auto;
-                    height: 20px;
-                    margin-top: 8px;
-                    margin-left: 10px;
-                    color: #646470;
+                div {
+                    display: inline-block;
 
-                    &:hover {
-                        color: #9393a0;
+                    .fa-icon {
+                        width: auto;
+                        height: 20px;
+                        margin-top: 8px;
+                        margin-left: 10px;
+                        color: #646470;
+
+                        &:hover {
+                            color: #9393a0;
+                        }
                     }
                 }
             }
