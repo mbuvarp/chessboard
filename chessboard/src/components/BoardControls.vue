@@ -16,10 +16,10 @@
                 </li>
             </ul>
             <div class="move-nav">
-                <div @click=""><icon name="fast-backward"></icon></div>
-                <div @click="step(false)"><icon name="step-backward"></icon></div>
                 <div @click=""><icon name="play"></icon></div>
                 <div @click=""><icon name="pause"></icon></div>
+                <div @click=""><icon name="fast-backward"></icon></div>
+                <div @click="step(false)"><icon name="step-backward"></icon></div>
                 <div @click="step(true)"><icon name="step-forward"></icon></div>
                 <div @click=""><icon name="fast-forward"></icon></div>
             </div>
@@ -122,8 +122,8 @@
 
     div#controls {
         width: 440px;
-        height: 720px;
-        float: left;
+        height: 90vh;
+        margin-left: 36px;
         border-radius: 2px;
         box-sizing: border-box;
         font-family: 'OpenSans-Regular', arial, sans-serif;
@@ -204,16 +204,23 @@
 
                 div {
                     display: inline-block;
+                    height: 20px;
+                    margin-top: 8px;
+                    margin-left: 10px;
 
+                    &:nth-child(3) {
+                        margin-left: 20px;
+                    }
                     .fa-icon {
                         width: auto;
-                        height: 20px;
-                        margin-top: 8px;
-                        margin-left: 10px;
-                        color: #646470;
+                        height: 100%;
+                        color: #7a7a87;
 
                         &:hover {
                             color: #9393a0;
+                        }
+                        &:active {
+                            color: #a7a7b2;
                         }
                     }
                 }

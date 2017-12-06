@@ -109,6 +109,9 @@
                     legalMoves: [],
                     move: [],
                     marked: []
+                },
+                sounds: {
+                    move: null
                 }
             }
         },
@@ -124,6 +127,8 @@
             this.generateSquares()
             this.generatePieces()
             this.findAllLegalMoves()
+
+            this.loadSounds()
 
             $(document).on('keydown', this.keyDown)
 
@@ -436,6 +441,9 @@
                     if (self.boardConfig.highlight.move)
                         self.highlightedSquares.move = [prevSquare, square]
                     
+                    // Play sound
+                    self.playSound('move')
+
                     // Find new legal moves
                     self.findAllLegalMoves()
 
@@ -1246,6 +1254,7 @@
                 this.animatedMove(source, target).done(() => {
                     halfmove.piece.square = target
 
+                    // Reset captured piece
                     if (halfmove.captured !== null) {
                         // Reset captive
                         halfmove.captured.is_captured = evt.direction
@@ -1255,6 +1264,19 @@
                                 left: 0,
                                 top: 0
                             })
+                    }
+
+                    // Reset castling
+                    if (halfmove.castling > 0) {
+                        const side = halfmove.castling === 1 ? 'K' : 'Q'
+                        const square = (side === 'K' ? 'h' : 'a') + (halfmove.piece.color === 'W' ? '1' : '8')
+                        const rook = this.pieces.find(p => p.color === halfmove.piece.color && p.side === side && p.type === 'R')
+                        rook.is_captured = false
+
+                        const rookPieceElement = this.getPieceElementBySquare(square)
+                        this.animatedMove(rook.square, square).done(() => {
+                            rook.square = square
+                        })
                     }
 
                     // Set highlighted squares
@@ -1292,6 +1314,17 @@
                     left: deltaX,
                     top: deltaY
                 }, 80, 'linear').promise()
+            },
+            loadSounds(theme) {
+                if (typeof theme === 'undefined')
+                    theme = 'regular'
+
+                const movePath = `/static/sounds/pieces/${theme}/move.wav`
+                this.sounds.move = new Audio(movePath)
+            },
+            playSound(sound) {
+                if (typeof this.sounds[sound] !== 'undefined' && this.sounds[sound] !== null)
+                    this.sounds[sound].play()
             },
 
             // ----------------------------------------
