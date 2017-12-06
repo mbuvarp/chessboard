@@ -1,7 +1,7 @@
 <template>
 
     <div id="controls">
-        <div class="pgn">
+        <div class="moves">
             <ul>
                 <li v-for="move in movelist">
                     <div class="movenr" v-text="move.movenr"></div>
@@ -9,6 +9,9 @@
                     <div :class="{ 'halfmove': true, 'black': true, 'prev': move.prev === 'black' }" v-text="move.black"></div>
                 </li>
             </ul>
+            <div class="move-nav">
+                
+            </div>
         </div>
         <div class="fen">
             <h3>FEN</h3>
@@ -54,7 +57,7 @@
             fen: {
                 handler() {
                     setTimeout(() => {
-                        $('.pgn').scrollTop($('.pgn').prop('scrollHeight'))
+                        $('.moves').scrollTop($('.moves').prop('scrollHeight'))
                     }, 25)
                 },
                 deep: true
@@ -101,11 +104,9 @@
                 box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.32);
             }
         }
-        div.pgn {
+        div.moves {
             width: 100%;
             height: 480px;
-            overflow-x: hidden;
-            overflow-y: auto;
             background-color: white;
             border: 1px solid #bfbfbf;
             box-shadow: 0 1px 3px 0px rgba(0, 0, 0, 0.32);
@@ -114,11 +115,14 @@
 
             ul {
                 width: 100%;
-                height: 100%;
+                height: calc(100% - 36px);
+                max-height: calc(100% - 36px);
                 margin: 0;
                 padding: 0;
                 list-style-type: none;
                 box-sizing: border-box;
+                overflow-x: hidden;
+                overflow-y: auto;
 
                 li {
                     line-height: 1.7rem;
@@ -131,14 +135,14 @@
                             width: 16%;
                             background-color: #eaeaea;
                             color: #888;
-                            border-right: 1px solid #bfbfbf;
+                            border-right: 1px solid #cfcfcf;
                             text-align: center;
                         }
                         &.halfmove {
                             width: 40%;
 
                             &.white {
-                                border-right: 1px solid #bfbfbf;
+                                border-right: 1px solid #cfcfcf;
                             }
                             &.prev {
                                 color: #e23516;
@@ -146,6 +150,12 @@
                         }
                     }
                 }
+            }
+            div.move-nav {
+                width: 100%;
+                height: 36px;
+                border-top: 1px solid #cfcfcf;
+                background-color: #eaeaea;
             }
         }
         div.fen {

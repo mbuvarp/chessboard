@@ -267,7 +267,7 @@
                 const square = this.interact.overSquare
                 const squareElement = this.getSquareElementByDescriptor(square)
                 if (squareElement !== null && this.currentPiece.moveIsLegal(square))
-                    if ((!this.check && this.currentPiece.type !== 'K') || !this.lookForCheckIf(this.currentPiece.square, square))
+                    if (!this.lookForCheckIf(this.currentPiece.square, square))
                         this.performMove(square)
                 
 
@@ -323,9 +323,9 @@
                           Math.abs(square.getFileNum() - prevSquare.getFileNum()) === 2 // Moves two squares
                     if (isCastling) {
                         const direction = square.getFileNum() > prevSquare.getFileNum() // true = kingside
-                        const rookFile = direction ? 'H' : 'A'
+                        const rookFile = direction ? 'h' : 'a'
                         const rook = this.getPieceBySquare(`${rookFile}${rank}`)
-                        rook.square = direction ? `F${rank}` : `D${rank}`
+                        rook.square = direction ? `f${rank}` : `d${rank}`
                         castling = direction ? 1 : 2
                     }
                 }
@@ -898,7 +898,7 @@
                             !this.squareIsOccupied('d1') &&
                             !this.squareIsAttacked('c1', piece.opponent) &&
                             !this.squareIsAttacked('d1', piece.opponent))
-                            legalMoves.push('d1')
+                            legalMoves.push('c1')
                     } else {
                         if (this.castling.blackKing &&
                             !this.squareIsOccupied('f8') &&
@@ -1292,12 +1292,14 @@
         height: 100%;
         font-size: 0;
         font-family: 'OpenSans-Regular', arial, sans-serif;
-        font-weight: bold;
-        color: #f4e1d0;
 
         div.side {
             background-color: #9b6b47;
+            background-color: rgba(235, 235, 235, 0.2);
             user-select: none;
+            color: #f4e1d0;
+            color: rgba(54, 54, 56, 0.7);
+            text-shadow: 0px 0px 1px rgba(255, 255, 255, 0.6);
         }
         div.numbers {
             float: left;
@@ -1440,17 +1442,21 @@
                     &:nth-child(odd) {
                         div.square:nth-child(odd) {
                             background-color: #e5bd8b;
+                            /*background-color: transparent;*/
                         }
                         div.square:nth-child(even) {
                             background-color: #b5794c;
+                            /*background-color: rgba(0, 0, 0, 0.3);*/
                         }
                     }
                     &:nth-child(even) {
                         div.square:nth-child(odd) {
                             background-color: #b5794c;
+                            /*background-color: rgba(0, 0, 0, 0.3);*/
                         }
                         div.square:nth-child(even) {
                             background-color: #e5bd8b;
+                            /*background-color: transparent;*/
                         }
                     }
                 }
