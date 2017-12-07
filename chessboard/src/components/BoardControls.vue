@@ -167,6 +167,17 @@
                 overflow-x: hidden;
                 overflow-y: auto;
 
+                &::-webkit-scrollbar {
+                    width: 8px;
+                }
+                 
+                &::-webkit-scrollbar-track {
+                    background-color: transparent;
+                }
+                 
+                &::-webkit-scrollbar-thumb {
+                    background-color: #bebec6;
+                }
                 li {
                     line-height: 1.7rem;
 

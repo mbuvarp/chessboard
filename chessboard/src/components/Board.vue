@@ -1384,6 +1384,7 @@
             float: left;
             width: 5%;
             height: 95%;
+            margin-right: 1px;
 
             div.number {
                 float: left;
