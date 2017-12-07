@@ -1,3 +1,4 @@
 pieces/regular/move https://freesound.org/people/florian_reinke/sounds/63535/
 pieces/electronic/move https://freesound.org/people/metamorphmuses/sounds/38718/
 pieces/musical/move https://freesound.org/people/LloydEvans09/sounds/185840/
+pieces/fight/capture https://freesound.org/people/CastIronCarousel/sounds/216782/

@@ -111,7 +111,8 @@
                     marked: []
                 },
                 sounds: {
-                    move: null
+                    move: null,
+                    capture: null
                 }
             }
         },
@@ -442,7 +443,10 @@
                         self.highlightedSquares.move = [prevSquare, square]
                     
                     // Play sound
-                    self.playSound('move')
+                    if (captured !== null)
+                        self.playSound('capture')
+                    else
+                        self.playSound('move')
 
                     // Find new legal moves
                     self.findAllLegalMoves()
@@ -1317,10 +1321,12 @@
             },
             loadSounds(theme) {
                 if (typeof theme === 'undefined')
-                    theme = 'regular'
+                    theme = 'fight'
 
                 const movePath = `/static/sounds/pieces/${theme}/move.wav`
+                const capturePath = `/static/sounds/pieces/${theme}/capture.wav`
                 this.sounds.move = new Audio(movePath)
+                this.sounds.capture = new Audio(capturePath)
             },
             playSound(sound) {
                 if (typeof this.sounds[sound] !== 'undefined' && this.sounds[sound] !== null)
