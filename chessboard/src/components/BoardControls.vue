@@ -8,10 +8,12 @@
                     <div
                         :class="{ 'halfmove': true, 'white': true, 'current': index * 2 + 1 === currentHalfMove }"
                         v-text="move[0]"
+                        @click="goto(index * 2 + 1)"
                     ></div>
                     <div
                         :class="{ 'halfmove': true, 'black': true, 'current': index * 2 + 2 === currentHalfMove }"
                         v-text="move[1]"
+                        @click="goto(index * 2 + 2)"
                     ></div>
                 </li>
             </ul>
@@ -19,10 +21,10 @@
                 <div class="buttons move-nav">
                     <div class="button" @click=""><icon name="play"></icon></div>
                     <div class="button" @click=""><icon name="pause"></icon></div>
-                    <div class="button" @click=""><icon name="fast-backward"></icon></div>
+                    <div class="button" @click="goto(0)"><icon name="fast-backward"></icon></div>
                     <div class="button" @click="step(false)"><icon name="step-backward"></icon></div>
                     <div class="button" @click="step(true)"><icon name="step-forward"></icon></div>
-                    <div class="button" @click=""><icon name="fast-forward"></icon></div>
+                    <div class="button" @click="goto(-1)"><icon name="fast-forward"></icon></div>
                 </div>
                 <div class="buttons right">
                     <div class="button" @click=""><icon name="rotate-left"></icon></div>
@@ -96,13 +98,24 @@
             step(direction) {
                 this.$bus.$emit('step', {
                     direction,
-                    halfmove: this.currentHalfMove
+                    currentHalfMove: this.currentHalfMove
                 })
 
                 if (direction && this.currentHalfMove < this.halfmoves.length)
                     ++this.currentHalfMove
                 else if (!direction && this.currentHalfMove > 0)
                     --this.currentHalfMove
+            },
+            goto(halfmove) {
+                if (halfmove === -1)
+                    halfmove = this.halfmoves.length
+
+                this.$bus.$emit('goto', {
+                    halfmove,
+                    currentHalfMove: this.currentHalfMove
+                })
+
+                this.currentHalfMove = halfmove
             },
 
             ...mapMutations([
@@ -185,6 +198,7 @@
                     background-color: #bebec6;
                 }
                 li {
+                    display: flex;
                     line-height: 1.7rem;
 
                     div {
@@ -199,14 +213,18 @@
                             text-align: center;
                         }
                         &.halfmove {
-                            width: 40%;
+                            width: 42%;
                             cursor: default;
+                            padding-left: 4px;
 
                             &.white {
                                 border-right: 1px solid #cfcfcf;
                             }
                             &.current {
                                 color: #e23516;
+                            }
+                            &:hover {
+                                background-color: #96c2cc;
                             }
                         }
                     }

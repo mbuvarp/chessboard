@@ -134,6 +134,7 @@
             $(document).on('keydown', this.keyDown)
 
             this.$bus.$on('step', this.moveStep)
+            this.$bus.$on('goto', this.moveTo)
 
             Vue.nextTick(() => {
                 this.initInteract()
@@ -1262,15 +1263,18 @@
             // MOVE NAVIGATION
             // ----------------------------------------
 
-            moveStep(evt) {
-                const halfmove = this.halfmoves[evt.halfmove + (evt.direction ? 0 : -1)]
+            moveStep(evt, speed) {
+                if (typeof speed === 'undefined')
+                    speed = 80
+
+                const halfmove = this.halfmoves[evt.currentHalfMove + (evt.direction ? 0 : -1)]
                 if (typeof halfmove === 'undefined')
-                    return
+                    return null
 
                 const source = evt.direction ? halfmove.source : halfmove.target
                 const target = evt.direction ? halfmove.target : halfmove.source
 
-                this.animatedMove(source, target).done(() => {
+                return this.animatedMove(source, target, speed).done(() => {
                     halfmove.piece.square = target
 
                     // Reset captured piece
@@ -1292,7 +1296,7 @@
                         const rook = this.pieces.find(p => p.color === halfmove.piece.color && p.side === side && p.type === 'R')
                         rook.is_captured = false
 
-                        this.animatedMove(rook.square, square).done(() => {
+                        this.animatedMove(rook.square, square, speed).done(() => {
                             rook.square = square
                         })
                     }
@@ -1312,12 +1316,32 @@
                     if (evt.direction)
                         this.highlightedSquares.move = [source, target]
                     else {
-                        const prevHalfmove = this.halfmoves[evt.halfmove - 2]
+                        const prevHalfmove = this.halfmoves[evt.currentHalfMove - 2]
                         this.highlightedSquares.move = typeof prevHalfmove === 'undefined' ? [] : [prevHalfmove.source, prevHalfmove.target]
                     }
                 })
             },
-            animatedMove(sourceSquare, targetSquare) {
+            moveTo(evt) {
+                if (evt.halfmove === evt.currentHalfMove)
+                    return
+
+                const direction = evt.halfmove > evt.currentHalfMove
+
+                this.moveStep({
+                    direction,
+                    currentHalfMove: evt.currentHalfMove
+                }).done(() => {
+                    evt.currentHalfMove += direction ? 1 : -1
+                    this.moveTo({
+                        halfmove: evt.halfmove,
+                        currentHalfMove: evt.currentHalfMove
+                    })
+                })
+            },
+            animatedMove(sourceSquare, targetSquare, speed) {
+                if (typeof speed === 'undefined')
+                    speed = 80
+
                 const sourceSquareElement = this.getSquareElementByDescriptor(sourceSquare)
                 if (typeof sourceSquareElement === 'undefined')
                     // TODO Error handling
@@ -1342,7 +1366,7 @@
                 return pieceElement.animate({
                     left: deltaX,
                     top: deltaY
-                }, 80, 'linear').promise()
+                }, speed, 'linear').promise()
             },
             loadSounds(theme) {
                 if (typeof theme === 'undefined')
