@@ -428,59 +428,19 @@
                     }
                 }
 
-                const finishTurn = function (self) {
-                    // Increase halfMove and fullMove
-                    self.halfMove = piece.type === 'P' ? 0 : self.halfMove + 1
-                    self.fullMove += self.turn
-
-                    // Update turn
-                    self.turn = self.turn === 0 ? 1 : 0
-
-                    self.check = false
-                    self.checkingPieces = []
-
-                    if (self.boardConfig.highlight.move)
-                        self.highlightedSquares.move = [prevSquare, square]
-                    
-                    // Play sound
-                    if (captured !== null)
-                        self.playSound('capture')
-                    else
-                        self.playSound('move')
-
-                    // Find new legal moves
-                    self.findAllLegalMoves()
-
-                    if (self.check) {
-                        self.checkmate = self.lookForCheckMate(self.turn === 0 ? 'W' : 'B', true)
-                        // TODO what to do on mate
-                    }
-
-                    // Update FEN, PGN and find new legal moves
-                    self.updateConfigFEN(self.createFEN())
-                    self.updateConfigPGN(piece.type, square, prevSquare, captured !== null, castling, self.check, self.checkmate, pgnFile, pgnRank)
-
-                    // Emit move event
-                    self.$bus.$emit('halfmove', {
-                        piece,
-                        source: prevSquare,
-                        target: square,
-                        captured,
-                        castling,
-                        check: self.check
-                    })
-                }
-
                 // Check for promotion
                 if (piece.type === 'P' && piece.square.getRank() === (piece.color === 'W' ? '8' : '1')) {
                     this.promote(piece, square)
                     const unwatch = this.$watch('promoting', function (value) {
-                        if (!value)
-                            finishTurn(this)
+                        if (!value) {
+                            const promotedTo = this.promotion
+                            this.promotion = null
+                            this.finishTurn(piece, square, prevSquare, captured, castling, promotedTo, pgnFile, pgnRank)
+                        }
                         unwatch()
                     })
                 } else {
-                    finishTurn(this)
+                    this.finishTurn(piece, square, prevSquare, captured, castling, null, pgnFile, pgnRank)
                 }
             },
             capturePiece(piece) {
@@ -509,10 +469,8 @@
                 })
 
                 const unwatch = this.$watch('promotion', function (value) {
-                    if (value) {
+                    if (value)
                         piece.type = value
-                        this.promotion = null
-                    }
                     unwatch()
                 })
             },
@@ -1038,6 +996,51 @@
 
                 return true
             },
+            finishTurn(piece, square, prevSquare, captured, castling, promotion, pgnFile, pgnRank) {
+                // Increase halfMove and fullMove
+                this.halfMove = piece.type === 'P' ? 0 : this.halfMove + 1
+                this.fullMove += this.turn
+
+                // Update turn
+                this.turn = this.turn === 0 ? 1 : 0
+
+                this.check = false
+                this.checkingPieces = []
+
+                if (this.boardConfig.highlight.move)
+                    this.highlightedSquares.move = [prevSquare, square]
+                
+                // Play sound
+                if (captured !== null)
+                    this.playSound('capture')
+                else
+                    this.playSound('move')
+
+                // Find new legal moves
+                this.findAllLegalMoves()
+
+                if (this.check) {
+                    this.checkmate = this.lookForCheckMate(this.turn === 0 ? 'W' : 'B', true)
+                    // TODO what to do on mate
+                }
+
+                // Update FEN, PGN and find new legal moves
+                this.updateConfigFEN(this.createFEN())
+                this.updateConfigPGN(piece.type, square, prevSquare, captured !== null, castling, this.check, this.checkmate, pgnFile, pgnRank)
+
+                // Emit move event
+                this.$bus.$emit('halfmove', {
+                    piece,
+                    source: prevSquare,
+                    target: square,
+                    captured,
+                    castling,
+                    castlingOpportunities: this.castling,
+                    promotion,
+                    enPassantSquare: this.enPassant,
+                    check: this.check
+                })
+            },
 
             // ----------------------------------------
             // FIND SQUARES AND PIECES
@@ -1277,11 +1280,14 @@
                         const rook = this.pieces.find(p => p.color === halfmove.piece.color && p.side === side && p.type === 'R')
                         rook.is_captured = false
 
-                        const rookPieceElement = this.getPieceElementBySquare(square)
                         this.animatedMove(rook.square, square).done(() => {
                             rook.square = square
                         })
                     }
+
+                    // Set correct state
+                    this.castling = halfmove.castlingOpportunities
+                    this.enPassant = halfmove.enPassantSquare
 
                     // Set highlighted squares
                     if (evt.direction)
@@ -1321,7 +1327,7 @@
             },
             loadSounds(theme) {
                 if (typeof theme === 'undefined')
-                    theme = 'fight'
+                    theme = 'regular'
 
                 const movePath = `/static/sounds/pieces/${theme}/move.wav`
                 const capturePath = `/static/sounds/pieces/${theme}/capture.wav`
@@ -1366,7 +1372,8 @@
 </script>
 
 <style lang="scss" scoped>
-    
+    @import '../assets/style/_settings.scss';
+
     @font-face {
         font-family: 'OpenSans-Regular';
         src: url('/static/fonts/OpenSans/OpenSans-Regular.ttf') format('truetype');        
@@ -1424,17 +1431,11 @@
             position: absolute;
             box-sizing: border-box;
             padding: 4px;
-            background-color: #ad7129;
-            background: repeating-linear-gradient(
-                135deg,
-                #ad7129,
-                #ad7129 4px,
-                #bf7f33 4px,
-                #bf7f33 8px
-            );
-            border-radius: 4px;
+            background-color: $lightSquare;
+            background: $promoterBackground;
+            border-radius: 2px;
             z-index: 1100 !important;
-            box-shadow: 0 0 12px #111, inset 0 0 2px #333;
+            box-shadow: 0 0 12px #111;
 
             div.piece-img {
                 display: inline-block;
@@ -1446,7 +1447,7 @@
                 border-radius: 4px;
 
                 &:hover {
-                    background-color: rgba(91, 52, 8, 0.55);
+                    background-color: rgba(91, 52, 8, 0.35);
                 }
             }
         }
@@ -1527,21 +1528,21 @@
                     }
                     &:nth-child(odd) {
                         div.square:nth-child(odd) {
-                            background-color: #e5bd8b;
+                            background-color: $lightSquare;
                             /*background-color: transparent;*/
                         }
                         div.square:nth-child(even) {
-                            background-color: #b5794c;
+                            background-color: $darkSquare;
                             /*background-color: rgba(0, 0, 0, 0.3);*/
                         }
                     }
                     &:nth-child(even) {
                         div.square:nth-child(odd) {
-                            background-color: #b5794c;
+                            background-color: $darkSquare;
                             /*background-color: rgba(0, 0, 0, 0.3);*/
                         }
                         div.square:nth-child(even) {
-                            background-color: #e5bd8b;
+                            background-color: $lightSquare;
                             /*background-color: transparent;*/
                         }
                     }

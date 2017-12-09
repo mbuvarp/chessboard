@@ -15,13 +15,18 @@
                     ></div>
                 </li>
             </ul>
-            <div class="move-nav">
-                <div @click=""><icon name="play"></icon></div>
-                <div @click=""><icon name="pause"></icon></div>
-                <div @click=""><icon name="fast-backward"></icon></div>
-                <div @click="step(false)"><icon name="step-backward"></icon></div>
-                <div @click="step(true)"><icon name="step-forward"></icon></div>
-                <div @click=""><icon name="fast-forward"></icon></div>
+            <div class="bottom-controls">
+                <div class="buttons move-nav">
+                    <div class="button" @click=""><icon name="play"></icon></div>
+                    <div class="button" @click=""><icon name="pause"></icon></div>
+                    <div class="button" @click=""><icon name="fast-backward"></icon></div>
+                    <div class="button" @click="step(false)"><icon name="step-backward"></icon></div>
+                    <div class="button" @click="step(true)"><icon name="step-forward"></icon></div>
+                    <div class="button" @click=""><icon name="fast-forward"></icon></div>
+                </div>
+                <div class="buttons right">
+                    <div class="button" @click=""><icon name="rotate-left"></icon></div>
+                </div>
             </div>
         </div>
         <div class="fen">
@@ -40,6 +45,7 @@
     import 'vue-awesome/icons/fast-forward'
     import 'vue-awesome/icons/play'
     import 'vue-awesome/icons/pause'
+    import 'vue-awesome/icons/rotate-left'
 
     const $ = require('jquery')
 
@@ -71,7 +77,7 @@
             fen: {
                 handler() {
                     setTimeout(() => {
-                        $('.moves').scrollTop($('.moves').prop('scrollHeight'))
+                        $('.moves ul').scrollTop($('.moves ul').prop('scrollHeight'))
                     }, 25)
                 },
                 deep: true
@@ -206,32 +212,47 @@
                     }
                 }
             }
-            div.move-nav {
+            div.bottom-controls {
                 width: 100%;
                 height: 36px;
                 border-top: 1px solid #cfcfcf;
                 background-color: #eaeaea;
                 user-select: none;
+                
+                .fa-icon {
+                    width: auto;
+                    height: 100%;
+                    color: #7a7a87;
 
-                div {
-                    display: inline-block;
-                    height: 20px;
-                    margin-top: 8px;
-                    margin-left: 10px;
-
-                    &:nth-child(3) {
-                        margin-left: 20px;
+                    &:hover {
+                        color: #9393a0;
                     }
-                    .fa-icon {
-                        width: auto;
-                        height: 100%;
-                        color: #7a7a87;
+                    &:active {
+                        color: #a7a7b2;
+                    }
+                }
+                div.buttons {
+                    display: inline-block;
+                    width: 50%;
+                    height: 100%;
 
-                        &:hover {
-                            color: #9393a0;
+                    &.move-nav {
+                        div.button:nth-child(3) {
+                            margin-left: 20px;
                         }
-                        &:active {
-                            color: #a7a7b2;
+                    }
+                    div.button {
+                        display: inline-block;
+                        height: 20px;
+                        margin-top: 8px;
+                        margin-left: 10px;
+                    }
+                    &.right {
+                        text-align: right;
+
+                        div.button {
+                            margin-left: 0px;
+                            margin-right: 12px;
                         }
                     }
                 }

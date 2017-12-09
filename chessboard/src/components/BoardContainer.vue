@@ -22,8 +22,8 @@
 <style lang="scss" scoped>
 
     div#board-container {
-        width: 90vh;
-        height: 90vh;
+        width: 90vmin;
+        height: 90vmin;
         box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.32);
         border-radius: 2px;
         box-sizing: border-box;
