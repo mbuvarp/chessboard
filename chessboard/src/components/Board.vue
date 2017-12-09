@@ -1026,7 +1026,18 @@
 
                 // Update FEN, PGN and find new legal moves
                 this.updateConfigFEN(this.createFEN())
-                this.updateConfigPGN(piece.type, square, prevSquare, captured !== null, castling, this.check, this.checkmate, pgnFile, pgnRank)
+                this.updateConfigPGN(
+                    promotion === null ? piece.type : 'P',
+                    square,
+                    prevSquare,
+                    captured !== null,
+                    castling,
+                    promotion,
+                    this.check,
+                    this.checkmate,
+                    pgnFile,
+                    pgnRank
+                )
 
                 // Emit move event
                 this.$bus.$emit('halfmove', {
@@ -1231,7 +1242,7 @@
 
                 return fen
             },
-            updateConfigPGN(type, square, prevSquare, capture, castling, check, checkmate, pgnFile, pgnRank) {
+            updateConfigPGN(type, square, prevSquare, capture, castling, promotion, check, checkmate, pgnFile, pgnRank) {
                 let pgn = ''
                 if (castling === 0) {
                     pgn += type === 'P' ? (capture ? prevSquare.getFile() : '') : type
@@ -1239,6 +1250,7 @@
                     pgn += pgnRank || ''
                     pgn += capture ? 'x' : ''
                     pgn += square
+                    pgn += promotion === null ? '' : `=${promotion}`
                     pgn += check && !checkmate ? '+' : ''
                     pgn += checkmate ? '#' : ''
                 } else
