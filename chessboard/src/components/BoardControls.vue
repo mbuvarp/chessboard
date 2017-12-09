@@ -1,8 +1,30 @@
 <template>
 
     <div id="controls">
-        <div class="moves">
-            <ul>
+        <div class="game">
+            <div class="info">
+                <div class="players">
+                    <div class="white">White</div>
+                    <div class="vs">vs</div>
+                    <div class="black">Black</div>
+                </div>
+                <div class="capstate">
+                    <ul class="white">
+                        <li class="cap" v-for="cap in getCaptures('W')">
+                            <div class="piece-icon" :style="'background-image: url(' + getPieceImagePathByType(cap[0], 0) + ');'"></div>
+                            <span v-if="cap[1] > 1" v-text="'x' + cap[1]"></span>
+                        </li>
+                    </ul>
+                    <div class="score" v-text="(score > 0 ? '+' : '') + score"></div>
+                    <ul class="black">
+                        <li class="cap" v-for="cap in getCaptures('B')">
+                            <div class="piece-icon" :style="'background-image: url(' + getPieceImagePathByType(cap[0], 1) + ');'"></div>
+                            <span v-if="cap[1] > 1" v-text="'x' + cap[1]"></span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <ul class="moves">
                 <li v-for="(move, index) in movelist">
                     <div class="movenr" v-text="index + 1"></div>
                     <div
@@ -14,6 +36,7 @@
                         :class="{ 'halfmove': true, 'black': true, 'current': index * 2 + 2 === currentHalfMove }"
                         v-text="move[1]"
                         @click="goto(index * 2 + 2)"
+                        v-if="move[1]"
                     ></div>
                 </li>
             </ul>
@@ -40,7 +63,7 @@
 </template>
 
 <script>
-    import { mapState, mapMutations } from 'vuex'
+    import { mapState, mapMutations, mapGetters } from 'vuex'
     import 'vue-awesome/icons/step-backward'
     import 'vue-awesome/icons/step-forward'
     import 'vue-awesome/icons/fast-backward'
@@ -69,10 +92,16 @@
             },
 
             ...mapState({
-                pgn: state => state.config.pgn,
-                fen: state => state.config.fen,
-                halfmoves: state => state.halfmoves
-            })
+                pgn: state => state.game.pgn,
+                fen: state => state.game.fen,
+                halfmoves: state => state.halfmoves,
+                score: state => state.game.score,
+                captures: state => state.game.captures,
+                boardConfig: state => state.game.board
+            }),
+            ...mapGetters([
+                'score'
+            ])
         },
 
         watch: {
@@ -95,6 +124,7 @@
                 ++this.currentHalfMove
                 this.addHalfMove(move)
             },
+
             step(direction) {
                 this.$bus.$emit('step', {
                     direction,
@@ -116,6 +146,34 @@
                 })
 
                 this.currentHalfMove = halfmove
+            },
+
+            getCaptures(color) {
+                const caps = color === 'W' ? this.captures.white : this.captures.black
+                const amt = {}
+
+                caps.forEach(elmt => {
+                    if (typeof amt[elmt] === 'undefined')
+                        amt[elmt] = 0
+                    ++amt[elmt]
+                })
+
+                const ret = []
+                for (const type in amt) {
+                    if (amt.hasOwnProperty(type)) {
+                        ret.push([type, amt[type]])
+                    }
+                }
+
+                return ret
+            },
+            getPieceImagePathByType(type, color) {
+                if (typeof color === 'number')
+                    color = color === 0 ? 'W' : 'B'
+
+                let path = color.toLowerCase() + type.toLowerCase()
+                path = `/static/images/pieces/${this.boardConfig.pieceSet}/${path}.svg`
+                return path
             },
 
             ...mapMutations([
@@ -166,7 +224,7 @@
                 box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.32);
             }
         }
-        div.moves {
+        div.game {
             width: 100%;
             height: 480px;
             background-color: white;
@@ -175,10 +233,108 @@
             color: rgb(40, 60, 100);
             box-sizing: border-box;
 
-            ul {
+            div.info {
                 width: 100%;
-                height: calc(100% - 36px);
-                max-height: calc(100% - 36px);
+                border-bottom: 1px solid #cfcfcf;
+                background-color: #eaeaea;
+                user-select: none;
+                overflow: hidden;
+                box-sizing: border-box;
+
+                div.players {
+                    width: 100%;
+                    height: 36px;
+                    box-sizing: border-box;
+
+                    div {
+                        display: inline-block;
+                        line-height: 36px;
+                        text-align: center;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        padding: 0 8px;
+                        box-sizing: border-box;
+                        text-shadow: -1px -1px 0 #ddd;
+                        color: #445;
+
+                        &.white, &.black {
+                            width: 45%;
+                        }
+                        &.vs {
+                            width: 10%;
+                            color: #aaa;
+                        }
+                    }
+                }
+                div.capstate {
+                    width: 100%;
+                    height: 36px;
+                    box-sizing: border-box;
+                    height: 36px;
+
+                    div.score {
+                        position: relative;
+                        display: inline-block;
+                        width: 10%;
+                        height: 100%;
+                        line-height: 44px;
+                        text-align: center;
+                        overflow: hidden;
+                        padding: 0 8px;
+                        box-sizing: border-box;
+
+                        &:before {
+                            content: "Score";
+                            position: absolute;
+                            left: 50%;
+                            top: -14px;
+                            transform: translateX(-50%);
+                            font-size: 0.6rem;
+                            color: #999;
+                            text-transform: uppercase;
+                        }
+                    }
+                    ul.white, ul.black {
+                        display: inline-block;
+                        width: 45%;
+                        height: 100%;
+                        padding: 0;
+                        margin: 0;
+                        list-style-type: none;
+                        vertical-align: top;
+                        overflow: hidden;
+                        text-align: center;
+
+                        li.cap {
+                            display: inline-block;
+                            width: auto;
+                            height: 36px;
+
+                            div.piece-icon {
+                                display: inline-block;
+                                width: 24px;
+                                height: 24px;
+                                margin-top: 6px;
+                                background-size: cover;
+                            }
+                            span {
+                                display: inline-block;
+                                height: 36px;
+                                line-height: 42px;
+                                vertical-align: top;
+                                margin-left: -6px;
+                                margin-right: 4px;
+                                color: #666;
+                                font-size: 0.6rem;
+                            }
+                        }
+                    }
+                }
+            }
+            ul.moves {
+                width: 100%;
+                height: calc(100% - 110px);
+                max-height: calc(100% - 72px);
                 margin: 0;
                 padding: 0;
                 list-style-type: none;

@@ -119,8 +119,8 @@
 
         computed: {
             ...mapState({
-                boardConfig: state => state.config.board,
-                halfmoves: state => state.halfmoves
+                boardConfig: state => state.game.board,
+                halfmoves: state => state.game.halfmoves
             })
         },
 
@@ -445,6 +445,7 @@
                 }
             },
             capturePiece(piece) {
+                this.addCapturedPiece(piece)
                 piece.capture()
             },
             promote(piece, square) {
@@ -1330,7 +1331,7 @@
                 this.moveStep({
                     direction,
                     currentHalfMove: evt.currentHalfMove
-                }).done(() => {
+                }, 20).done(() => {
                     evt.currentHalfMove += direction ? 1 : -1
                     this.moveTo({
                         halfmove: evt.halfmove,
@@ -1407,7 +1408,8 @@
 
             ...mapMutations([
                 'updateConfigFEN',
-                'addPGNMove'
+                'addPGNMove',
+                'addCapturedPiece'
             ])
         }
     }

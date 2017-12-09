@@ -5,8 +5,12 @@ Vue.use(Vuex)
 
 export default new Vuex.Store({
     state: {
-        halfmoves: [],
-        config: {
+        game: {
+            halfmoves: [],
+            captures: {
+                white: [],
+                black: []
+            },
             fen: '',
             pgn: {
                 event: null,
@@ -41,22 +45,51 @@ export default new Vuex.Store({
                     'pirat',
                     'regular'
                 ]
-            },
-            theme: {
-
             }
+        },
+        theme: {
+
+        }
+    },
+
+    getters: {
+        score(state) {
+            const values = {
+                P: 1,
+                N: 3,
+                B: 3,
+                R: 5,
+                Q: 9
+            }
+
+            const capsWhite = state.game.captures.white
+            const capsBlack = state.game.captures.black
+
+            let score = 0
+
+            capsWhite.forEach(elmt => {
+                score -= values[elmt]
+            })
+            capsBlack.forEach(elmt => {
+                score += values[elmt]
+            })
+
+            return score
         }
     },
 
     mutations: {
         updateConfigFEN(state, fen) {
-            state.config.fen = fen
+            state.game.fen = fen
         },
         addPGNMove(state, move) {
-            state.config.pgn.moves.push(move)
+            state.game.pgn.moves.push(move)
         },
         addHalfMove(state, move) {
-            state.halfmoves.push(move)
+            state.game.halfmoves.push(move)
+        },
+        addCapturedPiece(state, piece) {
+            state.game.captures[piece.color === 'W' ? 'white' : 'black'].push(piece.type)
         }
     },
 })
