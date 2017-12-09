@@ -1297,6 +1297,13 @@
                         })
                     }
 
+                    // Reset promotion
+                    if (halfmove.promotion !== null)
+                        if (evt.direction)
+                            halfmove.piece.type = halfmove.promotion
+                        else
+                            halfmove.piece.type = 'P'
+
                     // Set correct state
                     this.castling = halfmove.castlingOpportunities
                     this.enPassant = halfmove.enPassantSquare
