@@ -28,27 +28,25 @@ export default new Vuex.Store({
                     move: true
                 },
 
-                flipped: false,
-
-                pieceSet: 'cburnett',
-                pieceSets: [
-                    'alfonso',
-                    'cburnett',
-                    'chessicons',
-                    'chessmonk',
-                    'freestaunton',
-                    'kilfiger',
-                    'makruk',
-                    'maya',
-                    'merida',
-                    'metaltops',
-                    'pirat',
-                    'regular'
-                ]
+                flipped: false
             }
         },
         theme: {
-
+            pieceSet: 'cburnett',
+            pieceSets: [
+                'alfonso',
+                'cburnett',
+                'chessicons',
+                'chessmonk',
+                'freestaunton',
+                'kilfiger',
+                'makruk',
+                'maya',
+                'merida',
+                'metaltops',
+                'pirat',
+                'regular'
+            ]
         }
     },
 
@@ -79,6 +77,33 @@ export default new Vuex.Store({
     },
 
     mutations: {
+        resetGame(state) {
+            state.game.halfmoves = []
+            state.game.captures = {
+                white: [],
+                black: []
+            }
+            state.game.fen = ''
+            state.game.pgn = {
+                event: null,
+                site: null, // City, Region COUNTRY (three letter code, IOC)
+                date: '??', // YYYY.MM.DD (?? = unknown)
+                round: null,
+                white: null, // Lastname, Firstname
+                black: null, // Lastname, Firstname
+                result: '*', // 1-0, 0-1, 1/2-1/2, * (other, e.g. ongoing)
+                moves: []
+            }
+            state.game.board = {
+                highlight: {
+                    legal: true,
+                    move: true
+                },
+
+                flipped: false
+            }
+        },
+
         updateConfigFEN(state, fen) {
             state.game.fen = fen
         },

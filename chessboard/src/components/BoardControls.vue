@@ -10,15 +10,15 @@
                 </div>
                 <div class="capstate">
                     <ul class="white">
-                        <li class="cap" v-for="cap in getCaptures('W')">
-                            <div class="piece-icon" :style="'background-image: url(' + getPieceImagePathByType(cap[0], 0) + ');'"></div>
+                        <li class="cap" v-for="cap in getCaptures('B')">
+                            <div class="piece-icon" :style="'background-image: url(' + getPieceImagePathByType(cap[0], 1) + ');'"></div>
                             <span v-if="cap[1] > 1" v-text="'x' + cap[1]"></span>
                         </li>
                     </ul>
                     <div class="score" v-text="(score > 0 ? '+' : '') + score"></div>
                     <ul class="black">
-                        <li class="cap" v-for="cap in getCaptures('B')">
-                            <div class="piece-icon" :style="'background-image: url(' + getPieceImagePathByType(cap[0], 1) + ');'"></div>
+                        <li class="cap" v-for="cap in getCaptures('W')">
+                            <div class="piece-icon" :style="'background-image: url(' + getPieceImagePathByType(cap[0], 0) + ');'"></div>
                             <span v-if="cap[1] > 1" v-text="'x' + cap[1]"></span>
                         </li>
                     </ul>
@@ -50,7 +50,7 @@
                     <div class="button" @click="goto(-1)"><icon name="fast-forward"></icon></div>
                 </div>
                 <div class="buttons right">
-                    <div class="button" @click=""><icon name="rotate-left"></icon></div>
+                    <div class="button" @click="reset"><icon name="rotate-left"></icon></div>
                 </div>
             </div>
         </div>
@@ -97,22 +97,11 @@
                 halfmoves: state => state.halfmoves,
                 score: state => state.game.score,
                 captures: state => state.game.captures,
-                boardConfig: state => state.game.board
+                pieceSet: state => state.theme.pieceSet
             }),
             ...mapGetters([
                 'score'
             ])
-        },
-
-        watch: {
-            fen: {
-                handler() {
-                    setTimeout(() => {
-                        $('.moves ul').scrollTop($('.moves ul').prop('scrollHeight'))
-                    }, 25)
-                },
-                deep: true
-            }
         },
 
         mounted() {
@@ -123,6 +112,11 @@
             halfMoveHandler(move) {
                 ++this.currentHalfMove
                 this.addHalfMove(move)
+
+                // Scroll move list
+                setTimeout(() => {
+                    $('ul.moves').scrollTop($('ul.moves').prop('scrollHeight'))
+                }, 25)
             },
 
             step(direction) {
@@ -146,6 +140,11 @@
                 })
 
                 this.currentHalfMove = halfmove
+            },
+
+            reset() {
+                this.resetGame()
+                this.$bus.$emit('reset', null)
             },
 
             getCaptures(color) {
@@ -172,13 +171,14 @@
                     color = color === 0 ? 'W' : 'B'
 
                 let path = color.toLowerCase() + type.toLowerCase()
-                path = `/static/images/pieces/${this.boardConfig.pieceSet}/${path}.svg`
+                path = `/static/images/pieces/${this.pieceSet}/${path}.svg`
                 return path
             },
 
             ...mapMutations([
                 'updateConfigFEN',
-                'addHalfMove'
+                'addHalfMove',
+                'resetGame'
             ])
         }
     };

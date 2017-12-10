@@ -120,7 +120,8 @@
         computed: {
             ...mapState({
                 boardConfig: state => state.game.board,
-                halfmoves: state => state.game.halfmoves
+                halfmoves: state => state.game.halfmoves,
+                pieceSet: state => state.theme.pieceSet
             })
         },
 
@@ -135,6 +136,7 @@
 
             this.$bus.$on('step', this.moveStep)
             this.$bus.$on('goto', this.moveTo)
+            this.$bus.$on('reset', this.reset)
 
             Vue.nextTick(() => {
                 this.initInteract()
@@ -142,6 +144,41 @@
         },
         methods: {
 
+            // ----------------------------------------
+            // SETUP
+            // ----------------------------------------
+            reset() {
+                // Reset state
+                this.pieces = []
+                this.squares = []
+                this.currentPiece = null
+                this.turn = 0
+                this.check = false
+                this.checkmate = false
+                this.checkingPieces = []
+                this.enPassant = null
+                this.promoting = false
+                this.promotion = null
+                this.promoterToRight = true
+                this.castling = {
+                    whiteKing: true,
+                    whiteQueen: true,
+                    blackKing: true,
+                    blackQueen: true
+                }
+                this.halfMove = 0
+                this.fullMove = 1
+                this.highlightedSquares = {
+                    legalMoves: [],
+                    move: [],
+                    marked: []
+                }
+
+                // Setup board
+                this.generateSquares()
+                this.generatePieces()
+                this.findAllLegalMoves()
+            },
             generateSquares() {
                 for (let y = 8; y > 0; --y) {
                     this.squares.push([])
@@ -1177,13 +1214,13 @@
                     return ''
 
                 let path = piece.color.toLowerCase() + piece.type.toLowerCase()
-                path = `/static/images/pieces/${this.boardConfig.pieceSet}/${path}.svg`
+                path = `/static/images/pieces/${this.pieceSet}/${path}.svg`
 
                 return path
             },
             getPieceImagePathByType(type, color) {
                 let path = color.toLowerCase() + type.toLowerCase()
-                path = `/static/images/pieces/${this.boardConfig.pieceSet}/${path}.svg`
+                path = `/static/images/pieces/${this.pieceSet}/${path}.svg`
                 return path
             },
             highlightLegalSquare(square) {
