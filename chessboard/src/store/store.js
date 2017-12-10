@@ -6,11 +6,15 @@ Vue.use(Vuex)
 export default new Vuex.Store({
     state: {
         game: {
+            playerWhite: 'White',
+            playerBlack: 'Black',
+
             halfmoves: [],
             captures: {
                 white: [],
                 black: []
             },
+
             fen: '',
             pgn: {
                 event: null,
@@ -22,6 +26,7 @@ export default new Vuex.Store({
                 result: '*', // 1-0, 0-1, 1/2-1/2, * (other, e.g. ongoing)
                 moves: []
             },
+
             board: {
                 highlight: {
                     legal: true,

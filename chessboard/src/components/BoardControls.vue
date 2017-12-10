@@ -4,9 +4,9 @@
         <div class="game">
             <div class="info">
                 <div class="players">
-                    <div class="white">White</div>
+                    <div class="white" v-text="white"></div>
                     <div class="vs">vs</div>
-                    <div class="black">Black</div>
+                    <div class="black" v-text="black"></div>
                 </div>
                 <div class="capstate">
                     <ul class="white">
@@ -92,6 +92,8 @@
             },
 
             ...mapState({
+                white: state => state.game.playerWhite,
+                black: state => state.game.playerBlack,
                 pgn: state => state.game.pgn,
                 fen: state => state.game.fen,
                 halfmoves: state => state.game.halfmoves,

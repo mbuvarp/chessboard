@@ -1,6 +1,19 @@
 <template>
     
     <div class="container">
+        <div class="checkmate" v-if="displayCheckmate">
+            <h2 v-text="winner + ' wins!'"></h2>
+            <div class="buttons">
+                <div class="analyse" @click="analyse">
+                    <icon name="search"></icon>
+                    <span>Analyse</span>
+                </div>
+                <div class="reset" @click="reset">
+                    <icon name="rotate-left"></icon>
+                    <span>Reset</span>
+                </div>
+            </div>
+        </div>
         <div class="side numbers">
             <div v-for="number in numbers" class="number" v-text="number"></div>
         </div>
@@ -37,7 +50,7 @@
                 class="piece-img queen"
                 @click="promoteTo('Q')"
                 :style="{ backgroundImage: 'url(' + getPieceImagePathByType('Q', turn ? 'B': 'W') + ')' }"
-                v-if="!promoterToRight"
+                v-if="promoterOnTop"
             ></div>
             <div
                 class="piece-img rook"
@@ -58,7 +71,7 @@
                 class="piece-img queen"
                 @click="promoteTo('Q')"
                 :style="{ backgroundImage: 'url(' + getPieceImagePathByType('Q', turn ? 'B': 'W') + ')' }"
-                v-if="promoterToRight"
+                v-if="!promoterOnTop"
             ></div>
         </div>
     </div>
@@ -66,6 +79,8 @@
 </template>
 
 <script>
+    import 'vue-awesome/icons/rotate-left'
+    import 'vue-awesome/icons/search'
     import Vue from 'vue'
     import { mapState, mapMutations } from 'vuex'
     import ChessPiece from '../assets/classes/chesspiece'
@@ -86,11 +101,12 @@
                 turn: 0,
                 check: false,
                 checkmate: false,
+                displayCheckmate: false,
                 checkingPieces: [],
                 enPassant: null,
                 promoting: false,
                 promotion: null,
-                promoterToRight: true,
+                promoterOnTop: true,
                 castling: {
                     whiteKing: true,
                     whiteQueen: true,
@@ -112,13 +128,21 @@
                 },
                 sounds: {
                     move: null,
-                    capture: null
+                    capture: null,
+                    castling: null,
+                    check: null
                 }
             }
         },
 
         computed: {
+            winner() {
+                return this.turn === 0 ? this.black : this.white
+            },
+
             ...mapState({
+                white: state => state.game.playerWhite,
+                black: state => state.game.playerBlack,
                 boardConfig: state => state.game.board,
                 halfmoves: state => state.game.halfmoves,
                 pieceSet: state => state.theme.pieceSet
@@ -155,11 +179,12 @@
                 this.turn = 0
                 this.check = false
                 this.checkmate = false
+                this.displayCheckmate = false
                 this.checkingPieces = []
                 this.enPassant = null
                 this.promoting = false
                 this.promotion = null
-                this.promoterToRight = true
+                this.promoterOnTop = true
                 this.castling = {
                     whiteKing: true,
                     whiteQueen: true,
@@ -178,6 +203,11 @@
                 this.generateSquares()
                 this.generatePieces()
                 this.findAllLegalMoves()
+
+                this.resetGame()
+            },
+            analyse() {
+                this.displayCheckmate = false
             },
             generateSquares() {
                 for (let y = 8; y > 0; --y) {
@@ -494,17 +524,17 @@
                 this.promoting = true
 
                 // Set promoter style
-                const file = Math.abs(square.getFileNum() - (this.boardConfig.flipped ? 105 : 96))
-                const toRight = file > 5
-                let left = squareElement.offset().left
-                if (toRight)
-                    left -= 3 * squareElement[0].offsetWidth
-                this.promoterToRight = toRight
+                const rank = square.getRankNum()
+                const down = rank === 8 // TODO invert
+                let top = squareElement[0].offsetTop
+                if (!down)
+                    top -= 3 * squareElement[0].offsetHeight
+                this.promoterOnTop = down
                 $('.promoter').css({
-                    left,
-                    top: squareElement.offset().top,
-                    width: squareElement[0].offsetWidth * 4,
-                    height: squareElement[0].offsetHeight
+                    left: squareElement[0].offsetLeft + $('.side.numbers')[0].offsetWidth, // TODO side numbers?
+                    top,
+                    width: squareElement[0].offsetWidth,
+                    height: squareElement[0].offsetHeight * 4
                 })
 
                 const unwatch = this.$watch('promotion', function (value) {
@@ -1048,19 +1078,26 @@
 
                 if (this.boardConfig.highlight.move)
                     this.highlightedSquares.move = [prevSquare, square]
-                
-                // Play sound
-                if (captured !== null)
-                    this.playSound('capture')
-                else
-                    this.playSound('move')
 
                 // Find new legal moves
                 this.findAllLegalMoves()
 
+                // Play sound
+                if (this.check)
+                    this.playSound('check')
+                else if (castling !== 0)
+                    this.playSound('castling')
+                else if (captured !== null)
+                    this.playSound('capture')
+                else
+                    this.playSound('move')
+
+                // Check for check and checkmate
                 if (this.check) {
                     this.checkmate = this.lookForCheckMate(this.turn === 0 ? 'W' : 'B', true)
-                    // TODO what to do on mate
+
+                    if (this.checkmate)
+                        this.handleCheckMate()
                 }
 
                 // Update FEN, PGN and find new legal moves
@@ -1090,6 +1127,9 @@
                     enPassantSquare: this.enPassant,
                     check: this.check
                 })
+            },
+            handleCheckMate() {
+                this.displayCheckmate = true
             },
 
             // ----------------------------------------
@@ -1412,8 +1452,12 @@
 
                 const movePath = `/static/sounds/pieces/${theme}/move.wav`
                 const capturePath = `/static/sounds/pieces/${theme}/capture.wav`
+                const castlingPath = `/static/sounds/pieces/${theme}/castling.wav`
+                const checkPath = `/static/sounds/pieces/${theme}/check.wav`
                 this.sounds.move = new Audio(movePath)
                 this.sounds.capture = new Audio(capturePath)
+                this.sounds.castling = new Audio(castlingPath)
+                this.sounds.check = new Audio(checkPath)
             },
             playSound(sound) {
                 if (typeof this.sounds[sound] !== 'undefined' && this.sounds[sound] !== null)
@@ -1446,7 +1490,8 @@
             ...mapMutations([
                 'updateConfigFEN',
                 'addPGNMove',
-                'addCapturedPiece'
+                'addCapturedPiece',
+                'resetGame'
             ])
         }
     }
@@ -1462,11 +1507,61 @@
     }
 
     div.container {
+        position: relative;
         width: 100%;
         height: 100%;
         font-size: 0;
         font-family: 'OpenSans-Regular', arial, sans-serif;
 
+        div.checkmate {
+            position: absolute;
+            width: 45%;
+            left: 50%;
+            top: 50%;
+            padding: 24px;
+            transform: translate(-50%, -50%);
+            z-index: 10000;
+            background-color: white;
+            border-radius: 4px;
+            box-shadow: 0 2px 6px #444;
+            font-size: 1rem;
+
+            h2 {
+                width: 100%;
+                text-align: center;
+                color: #333;
+            }
+            div.buttons {
+                text-align: center;
+
+                .fa-icon {
+                    width: auto;
+                    height: 22px;
+                    color: #3b771c;
+                    vertical-align: middle;
+                }
+                div {
+                    display: inline-block;
+                    padding: 4px 8px;
+                    font-size: 0.8rem;
+                    text-transform: uppercase;
+                    color: #666;
+                    vertical-align: top;
+                    cursor: default;
+                    border-radius: 2px;
+
+                    &:hover {
+                        background-color: rgba(0, 0, 0, 0.1);
+                    }
+                }
+                div.analyse {
+                    margin-right: 10px;
+                }
+                div.reset {
+                    margin-left: 10px;
+                }
+            }
+        }
         div.side {
             background-color: #9b6b47;
             background-color: rgba(235, 235, 235, 0.2);
@@ -1520,9 +1615,8 @@
             box-shadow: 0 0 12px #111;
 
             div.piece-img {
-                display: inline-block;
-                width: 25%;
-                height: 100%;
+                width: 100%;
+                height: 25%;
                 padding: 12px;
                 box-sizing: border-box;
                 background-size: cover;
