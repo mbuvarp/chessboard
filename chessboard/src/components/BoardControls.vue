@@ -94,7 +94,7 @@
             ...mapState({
                 pgn: state => state.game.pgn,
                 fen: state => state.game.fen,
-                halfmoves: state => state.halfmoves,
+                halfmoves: state => state.game.halfmoves,
                 score: state => state.game.score,
                 captures: state => state.game.captures,
                 pieceSet: state => state.theme.pieceSet
