@@ -1,7 +1,7 @@
 <template>
     
     <div class="container">
-        <div class="checkmate" v-if="displayCheckmate">
+        <div class="checkmate modal" v-if="displayCheckmate">
             <h2 v-text="winner + ' wins!'"></h2>
             <div class="buttons">
                 <div class="analyse" @click="analyse">
@@ -12,6 +12,14 @@
                     <icon name="rotate-left"></icon>
                     <span>Reset</span>
                 </div>
+            </div>
+        </div>
+        <div class="load-pgn modal" v-if="loadPGN">
+            <h2>Load PGN</h2>
+            <textarea v-model="editablePGN"></textarea>
+            <div class="buttons">
+                <button type="button" @click="submittedPGN = ''">Cancel</button>
+                <button type="button" @click="submittedPGN = editablePGN">Submit</button>
             </div>
         </div>
         <div class="side numbers">
@@ -92,6 +100,13 @@
 
         data() {
             return {
+                loadPGN: false,
+                loadFEN: false,
+                submittedPGN: null,
+                submittedFEN: null,
+                editablePGN: '',
+                displayCheckmate: false,
+
                 pieces: [],
                 squares: [],
                 numbers: ['8', '7', '6', '5', '4', '3', '2', '1'],
@@ -101,7 +116,6 @@
                 turn: 0,
                 check: false,
                 checkmate: false,
-                displayCheckmate: false,
                 checkingPieces: [],
                 enPassant: null,
                 promoting: false,
@@ -161,6 +175,7 @@
             this.$bus.$on('step', this.moveStep)
             this.$bus.$on('goto', this.moveTo)
             this.$bus.$on('reset', this.reset)
+            this.$bus.$on('load', this.load)
 
             Vue.nextTick(() => {
                 this.initInteract()
@@ -206,6 +221,32 @@
 
                 this.resetGame()
             },
+            load(type) {
+                if (type === 'pgn') {
+                    this.loadPGN = true
+                    const unwatch = this.$watch('submittedPGN', pgn => {
+                        // If canceled
+                        if (pgn === '') {
+                            unwatch()
+                            this.submittedPGN = null
+                            return
+                        }
+
+                        // Otherwise, try to load it
+                        const valid = this.pgnIsValid(pgn)
+                        if (valid) {
+                            this.reset()
+                            this.executePGN(valid.moves)
+                        }
+                    })
+                }
+            },
+            executePGN(moves) {
+                for (let i = 0; i < moves.length; i++) {
+                    const move = moves[i]
+                    console.log(move)
+                }
+            },
             analyse() {
                 this.displayCheckmate = false
             },
@@ -245,6 +286,45 @@
                     }
 
                 this.updateConfigFEN(this.createFEN())
+            },
+            pgnIsValid(pgn) {
+                const lines = pgn.split('\n')
+                if (lines.length === 1)
+                    return false
+
+                if (!lines.includes(''))
+                    return false
+
+                const patternMeta = /[A-Za-z0-9]+ "['/\-0-9A-Za-z,\\. ]+"/
+                const metadata = []
+                let breakLine = 0
+                for (let i = 0; i < lines.length; i++) {
+                    if (lines[i] === '') {
+                        breakLine = i
+                        break
+                    }
+                    if (patternMeta.test(lines[i]))
+                        metadata.push(lines[i])
+                }
+
+                const moveLines = lines.splice(breakLine + 1)
+                const moves = moveLines.join(' ')
+
+                const allMoves = moves.split(/[0-9]+\./)
+
+                // Remove empty lines, and trim the rest
+                for (let i = 0; i < allMoves.length; i++) {
+                    if (allMoves[i] === '') {
+                        allMoves.splice(i, 1)
+                        i--
+                    } else 
+                        allMoves[i] = allMoves[i].trim()
+                }
+
+                return {
+                    metadata,
+                    moves: allMoves
+                }
             },
 
             // ----------------------------------------
@@ -938,32 +1018,34 @@
                         }
 
                     // Castling
-                    if (piece.color === 'W') {
-                        if (this.castling.whiteKing &&
-                            !this.squareIsOccupied('f1') &&
-                            !this.squareIsOccupied('g1') &&
-                            !this.squareIsAttacked('f1', piece.opponent) &&
-                            !this.squareIsAttacked('g1', piece.opponent))
-                            legalMoves.push('g1')
-                        if (this.castling.whiteQueen &&
-                            !this.squareIsOccupied('c1') &&
-                            !this.squareIsOccupied('d1') &&
-                            !this.squareIsAttacked('c1', piece.opponent) &&
-                            !this.squareIsAttacked('d1', piece.opponent))
-                            legalMoves.push('c1')
-                    } else {
-                        if (this.castling.blackKing &&
-                            !this.squareIsOccupied('f8') &&
-                            !this.squareIsOccupied('g8') &&
-                            !this.squareIsAttacked('f8', piece.opponent) &&
-                            !this.squareIsAttacked('g8', piece.opponent))
-                            legalMoves.push('g8')
-                        if (this.castling.blackQueen &&
-                            !this.squareIsOccupied('c8') &&
-                            !this.squareIsOccupied('d8') &&
-                            !this.squareIsAttacked('c8', piece.opponent) &&
-                            !this.squareIsAttacked('d8', piece.opponent))
-                            legalMoves.push('c8')
+                    if (!this.check) {
+                        if (piece.color === 'W') {
+                            if (this.castling.whiteKing &&
+                                !this.squareIsOccupied('f1') &&
+                                !this.squareIsOccupied('g1') &&
+                                !this.squareIsAttacked('f1', piece.opponent) &&
+                                !this.squareIsAttacked('g1', piece.opponent))
+                                legalMoves.push('g1')
+                            if (this.castling.whiteQueen &&
+                                !this.squareIsOccupied('c1') &&
+                                !this.squareIsOccupied('d1') &&
+                                !this.squareIsAttacked('c1', piece.opponent) &&
+                                !this.squareIsAttacked('d1', piece.opponent))
+                                legalMoves.push('c1')
+                        } else {
+                            if (this.castling.blackKing &&
+                                !this.squareIsOccupied('f8') &&
+                                !this.squareIsOccupied('g8') &&
+                                !this.squareIsAttacked('f8', piece.opponent) &&
+                                !this.squareIsAttacked('g8', piece.opponent))
+                                legalMoves.push('g8')
+                            if (this.castling.blackQueen &&
+                                !this.squareIsOccupied('c8') &&
+                                !this.squareIsOccupied('d8') &&
+                                !this.squareIsAttacked('c8', piece.opponent) &&
+                                !this.squareIsAttacked('d8', piece.opponent))
+                                legalMoves.push('c8')
+                        }
                     }
 
                     legalMoves.removeIf(sqr => this.squareIsOccupied(sqr, piece.color))
@@ -1500,6 +1582,7 @@
 
 <style lang="scss" scoped>
     @import '../assets/style/_settings.scss';
+    @import '../assets/style/_standards.scss';
 
     @font-face {
         font-family: 'OpenSans-Regular';
@@ -1514,22 +1597,9 @@
         font-family: 'OpenSans-Regular', arial, sans-serif;
 
         div.checkmate {
-            position: absolute;
-            width: 45%;
-            left: 50%;
-            top: 50%;
-            padding: 24px;
-            transform: translate(-50%, -50%);
-            z-index: 10000;
-            background-color: white;
-            border-radius: 4px;
-            box-shadow: 0 2px 6px #444;
-            font-size: 1rem;
 
             h2 {
-                width: 100%;
-                text-align: center;
-                color: #333;
+                padding: 24px;
             }
             div.buttons {
                 text-align: center;
@@ -1560,6 +1630,23 @@
                 div.reset {
                     margin-left: 10px;
                 }
+            }
+        }
+        div.load-pgn {
+
+            textarea {
+                width: 100%;
+                height: 260px;
+                border: none;
+                box-sizing: border-box;
+                border: 1px solid $lightBorder;
+                resize: vertical;
+                color: #333;
+            }
+            div.buttons {
+                width: 100%;
+                text-align: right;
+                margin-top: 4px;
             }
         }
         div.side {

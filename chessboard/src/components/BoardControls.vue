@@ -50,6 +50,7 @@
                     <div class="button" @click="goto(-1)"><icon name="fast-forward"></icon></div>
                 </div>
                 <div class="buttons right">
+                    <div class="button" @click="load('pgn')"><icon name="file"></icon></div>
                     <div class="button" @click="reset"><icon name="rotate-left"></icon></div>
                 </div>
             </div>
@@ -71,6 +72,7 @@
     import 'vue-awesome/icons/play'
     import 'vue-awesome/icons/pause'
     import 'vue-awesome/icons/rotate-left'
+    import 'vue-awesome/icons/file'
 
     const $ = require('jquery')
 
@@ -148,6 +150,9 @@
                 this.resetGame()
                 this.$bus.$emit('reset', null)
             },
+            load(type) {
+                this.$bus.$emit('load', type)
+            },
 
             getCaptures(color) {
                 const caps = color === 'W' ? this.captures.white : this.captures.black
@@ -188,6 +193,8 @@
 </script>
 
 <style lang="scss" scoped>
+    @import '../assets/style/_settings.scss';
+    @import '../assets/style/_standards.scss';
 
     @font-face {
         font-family: 'OpenSans-Regular';
@@ -237,7 +244,7 @@
 
             div.info {
                 width: 100%;
-                border-bottom: 1px solid #cfcfcf;
+                border-bottom: 1px solid $lightBorder;
                 background-color: #eaeaea;
                 user-select: none;
                 overflow: hidden;
@@ -367,7 +374,7 @@
                             width: 16%;
                             background-color: #eaeaea;
                             color: #888;
-                            border-right: 1px solid #cfcfcf;
+                            border-right: 1px solid $lightBorder;
                             text-align: center;
                         }
                         &.halfmove {
@@ -376,7 +383,7 @@
                             padding-left: 4px;
 
                             &.white {
-                                border-right: 1px solid #cfcfcf;
+                                border-right: 1px solid $lightBorder;
                             }
                             &.current {
                                 color: #e23516;
@@ -391,7 +398,7 @@
             div.bottom-controls {
                 width: 100%;
                 height: 36px;
-                border-top: 1px solid #cfcfcf;
+                border-top: 1px solid $lightBorder;
                 background-color: #eaeaea;
                 user-select: none;
                 
