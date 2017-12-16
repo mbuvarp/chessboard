@@ -3,6 +3,7 @@
 import Vue from 'vue'
 import Icon from 'vue-awesome/components/Icon'
 import App from './App'
+import TabViewer from './components/controls/TabViewer'
 import router from './router'
 import store from './store/store'
 import helpers from './functions/helpers'
@@ -17,6 +18,7 @@ Vue.use(prototype)
 Vue.use(bus)
 
 Vue.component('icon', Icon)
+Vue.component('tab-viewer', TabViewer)
 
 /* eslint-disable no-new */
 new Vue({

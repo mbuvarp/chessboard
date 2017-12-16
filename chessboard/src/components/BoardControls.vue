@@ -1,23 +1,18 @@
 <template>
 
     <div id="controls">
-        <div class="tabs">
-            <div class="tab-head">
-                <div class="tab-game">
-                    Game
-                </div>
-                <div class="tab-settings">
-                    Settings
-                </div>
-            </div>
-            <game-info></game-info>
-        </div>
+        <tab-viewer
+            class="tab-viewer"
+            :headers="['Game', 'Settings']"
+            :bodies="[gameInfoComponent, gameSettingsComponent]"
+        ></tab-viewer>
     </div>
 
 </template>
 
 <script>
     import GameInfo from './GameInfo'
+    import GameSettings from './GameSettings'
 
     export default {
         name: 'BoardControls',
@@ -28,7 +23,8 @@
 
         data() {
             return {
-                currentHalfMove: 0,
+                gameInfoComponent: GameInfo,
+                gameSettingsComponent: GameSettings
             }
         },
     }
@@ -41,11 +37,6 @@
         font-family: 'OpenSans-Regular';
         src: url('/static/fonts/OpenSans/OpenSans-Regular.ttf') format('truetype');        
     }
-    @keyframes rolling { 
-        0% { background-position: 0% 19% }
-        50% { background-position: 100% 82% }
-        100% { background-position: 0% 19% }
-    }
 
     div#controls {
         width: 440px;
@@ -55,10 +46,6 @@
         box-sizing: border-box;
         font-family: 'OpenSans-Regular', arial, sans-serif;
 
-        h3 {
-            margin: 0 0 2px 0;
-            letter-spacing: 2px;
-        }
         input[type="text"] {
             width: 100%;
             box-sizing: border-box;
@@ -74,11 +61,8 @@
                 box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.32);
             }
         }
-        div.tabs {
-            div.fen {
-                width: 100%;
-                margin-top: 8px;
-            }
+        .tab-viewer {
+            box-shadow: 0 1px 3px 0px rgba(0, 0, 0, 0.32);
         }
     }
 

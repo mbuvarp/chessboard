@@ -190,9 +190,6 @@
     div#movelist {
         width: 100%;
         height: 480px;
-        background-color: white;
-        border: 1px solid #bfbfbf;
-        box-shadow: 0 1px 3px 0px rgba(0, 0, 0, 0.32);
         color: rgb(40, 60, 100);
         box-sizing: border-box;
 
@@ -206,12 +203,12 @@
 
             div.players {
                 width: 100%;
-                height: 36px;
+                height: 42px;
                 box-sizing: border-box;
 
                 div {
                     display: inline-block;
-                    line-height: 36px;
+                    line-height: 42px;
                     text-align: center;
                     overflow: hidden;
                     text-overflow: ellipsis;
@@ -296,10 +293,11 @@
         }
         ul.moves {
             width: 100%;
-            height: calc(100% - 110px);
-            max-height: calc(100% - 72px);
+            height: calc(100% - 116px);
+            max-height: calc(100% - 116px);
             margin: 0;
             padding: 0;
+            background-color: white;
             list-style-type: none;
             box-sizing: border-box;
             overflow-x: hidden;
