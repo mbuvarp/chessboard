@@ -112,6 +112,7 @@
                 numbers: ['8', '7', '6', '5', '4', '3', '2', '1'],
                 letters: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'],
 
+                gameStarted: false,
                 currentPiece: null,
                 turn: 0,
                 check: false,
@@ -129,6 +130,8 @@
                 },
                 halfMove: 0,
                 fullMove: 1,
+
+                currentMoveStart: 0,
 
                 interact: {
                     holdingPiece: null,
@@ -190,6 +193,7 @@
                 // Reset state
                 this.pieces = []
                 this.squares = []
+                this.gameStarted = false
                 this.currentPiece = null
                 this.turn = 0
                 this.check = false
@@ -208,6 +212,7 @@
                 }
                 this.halfMove = 0
                 this.fullMove = 1
+                this.currentMoveStart = 0
                 this.highlightedSquares = {
                     legalMoves: [],
                     move: [],
@@ -219,6 +224,7 @@
                 this.generatePieces()
                 this.findAllLegalMoves()
 
+                // Store reset
                 this.resetGame()
             },
             load(type) {
@@ -286,6 +292,13 @@
                     }
 
                 this.updateConfigFEN(this.createFEN())
+            },
+            startNewGame(reset) {
+                if (reset)
+                    this.reset()
+
+                this.currentMoveStart = Date.timeNow()
+                this.gameStarted = true
             },
             pgnIsValid(pgn) {
                 const lines = pgn.split('\n')
@@ -1197,6 +1210,11 @@
                     pgnRank
                 )
 
+                // Timing
+                const timeNow = Date.getTime()
+                const timespan = timeNow - this.currentMoveStart
+                this.currentMoveStart = timeNow
+
                 // Emit move event
                 this.$bus.$emit('halfmove', {
                     piece,
@@ -1207,7 +1225,8 @@
                     castlingOpportunities: this.castling,
                     promotion,
                     enPassantSquare: this.enPassant,
-                    check: this.check
+                    check: this.check,
+                    timespan
                 })
             },
             handleCheckMate() {
