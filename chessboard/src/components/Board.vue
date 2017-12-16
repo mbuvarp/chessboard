@@ -183,6 +183,8 @@
             Vue.nextTick(() => {
                 this.initInteract()
             })
+
+            this.startNewGame()
         },
         methods: {
 
@@ -297,7 +299,7 @@
                 if (reset)
                     this.reset()
 
-                this.currentMoveStart = Date.timeNow()
+                this.currentMoveStart = new Date().getTime()
                 this.gameStarted = true
             },
             pgnIsValid(pgn) {
@@ -1211,7 +1213,7 @@
                 )
 
                 // Timing
-                const timeNow = Date.getTime()
+                const timeNow = new Date().getTime()
                 const timespan = timeNow - this.currentMoveStart
                 this.currentMoveStart = timeNow
 

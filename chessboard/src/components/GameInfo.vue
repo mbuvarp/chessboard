@@ -27,15 +27,20 @@
                 <div class="movenr" v-text="index + 1"></div>
                 <div
                     :class="{ 'halfmove': true, 'white': true, 'current': index * 2 + 1 === currentHalfMove }"
-                    v-text="move[0]"
                     @click="goto(index * 2 + 1)"
-                ></div>
+                    v-if="move.white"
+                >
+                    <span class="move" v-text="move.white"></span>
+                    <span class="timespan" v-text="move.whiteTime"></span>
+                </div>
                 <div
                     :class="{ 'halfmove': true, 'black': true, 'current': index * 2 + 2 === currentHalfMove }"
-                    v-text="move[1]"
                     @click="goto(index * 2 + 2)"
-                    v-if="move[1]"
-                ></div>
+                    v-if="move.black"
+                >
+                    <span class="move" v-text="move.black"></span>
+                    <span class="timespan" v-text="move.blackTime"></span>
+                </div>
             </li>
         </ul>
         <div class="bottom-controls">
@@ -67,6 +72,8 @@
     import 'vue-awesome/icons/file'
 
     const $ = require('jquery')
+    const moment = require('moment')
+    const momentDurationFormatSetup = require('moment-duration-format')
 
     export default {
         name: 'GameInfo',
@@ -80,8 +87,18 @@
         computed: {
             movelist() {
                 const moves = []
-                for (let i = 0; i < this.pgn.moves.length; i += 2)
-                    moves.push([this.pgn.moves[i], this.pgn.moves[i + 1]])
+                for (let i = 0; i < this.pgn.moves.length; i += 2) {
+                    const whiteTime = typeof this.halfmoves[i] === 'undefined' ? '' :
+                        moment.duration(this.halfmoves[i].timespan, 'milliseconds').format('H[h] m[m] s[s]')
+                    const blackTime = typeof this.halfmoves[i + 1] === 'undefined' ? '' :
+                        moment.duration(this.halfmoves[i + 1].timespan, 'milliseconds').format('H[h] m[m] s[s]')
+                    moves.push({ 
+                        white: this.pgn.moves[i],
+                        whiteTime,
+                        black: this.pgn.moves[i + 1],
+                        blackTime
+                    })
+                }
                 return moves
             },
 
@@ -100,6 +117,8 @@
         },
 
         mounted() {
+            momentDurationFormatSetup(moment)
+
             this.$bus.$on('halfmove', this.halfMoveHandler)
         },
 
@@ -337,11 +356,21 @@
                         &.white {
                             border-right: 1px solid $lightBorder;
                         }
-                        &.current {
-                            color: #e23516;
-                        }
                         &:hover {
                             background-color: #96c2cc;
+                        }
+
+                        span.move {
+
+                            &.current {
+                                color: #e23516;
+                            }
+                        }
+                        span.timespan {
+                            float: right;
+                            padding-right: 4px;
+                            font-size: 0.8em;
+                            color: #888;
                         }
                     }
                 }
