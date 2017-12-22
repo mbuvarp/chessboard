@@ -26,6 +26,16 @@
             <div v-for="number in numbers" class="number" v-text="number"></div>
         </div>
         <div id="board" oncontextmenu="return false">
+            <div
+                v-for="arrow in highlightedSquares.arrows"
+                class="arrow"
+                :style="{
+                    'left': arrow.left + 'px',
+                    'top': arrow.top + 'px',
+                    'width': arrow.length + 'px',
+                    'transform': 'rotate(' + arrow.angle + 'deg)'
+                }"
+            ></div>
             <div class="shadow" v-if="promoting"></div>
             <div class="squares">
                 <div v-for="rank in squares" class="rank">
@@ -136,12 +146,16 @@
                 interact: {
                     holdingPiece: null,
                     squareCoordinates: {},
-                    overSquare: null
+                    overSquare: null,
+                    arrowDragging: false,
+                    currentArrowStartSquare: null,
+                    currentArrowEndSquare: null
                 },
                 highlightedSquares: {
                     legalMoves: [],
                     move: [],
-                    marked: []
+                    marked: [],
+                    arrows: []
                 },
                 sounds: {
                     move: null,
@@ -351,6 +365,8 @@
                 $(document).on('mouseup', '.piece', this.pieceDragEnd)
 
                 $(document).on('mousedown', '.square', this.squareMouseDown)
+                $(document).on('mousemove', '.square', this.squareMouseMove)
+                $(document).on('mouseup', '.square', this.squareMouseEnd)
             },
             pieceDragStart(evt) {
                 if (evt.button !== 0)
@@ -376,18 +392,7 @@
                 this.interact.holdingPieceStartY = midY
 
                 // Find all square coordinates
-                const squares = $('.square')
-                for (let s = 0; s < squares.length; ++s) {
-                    const square = $(squares[s])
-                    const squareDescriptor = square.attr('data-square')
-                    const left = square.offset().left
-                    const top = square.offset().top
-                    const right = left + square[0].offsetWidth
-                    const bottom = top + square[0].offsetHeight
-                    this.interact.squareCoordinates[squareDescriptor] = {
-                        left, top, right, bottom
-                    }
-                }
+                this.findSquareCoordinates()
 
                 // Update current piece and highlights
                 const square = pieceElement.parent().attr('data-square')
@@ -455,6 +460,108 @@
                 // Update currentPiece and refresh legal moves
                 this.currentPiece = null
                 this.highlightedSquares.legalMoves = []
+            },
+            squareMouseDown(evt) {
+                if (evt.button !== 2)
+                    return
+
+                this.interact.arrowDragging = true
+
+                const squareDescriptor = $(evt.currentTarget).attr('data-square')
+                if (this.highlightedSquares.marked.includes(squareDescriptor))
+                    this.highlightedSquares.marked.remove(squareDescriptor)
+                else
+                    this.highlightedSquares.marked.push(squareDescriptor)
+
+                this.interact.currentArrowStartSquare = squareDescriptor
+                this.interact.currentArrowEndSquare = squareDescriptor
+                this.findSquareCoordinates()
+            },
+            squareMouseMove(evt) {
+                if (!this.interact.arrowDragging)
+                    return
+
+                // Discover underlying square
+                const square = this.$helpers.findObjectKey(this.interact.squareCoordinates, value => 
+                    evt.pageX >= value.left && evt.pageX <= value.right &&
+                    evt.pageY >= value.top && evt.pageY <= value.bottom
+                )
+                if (square !== this.interact.overSquare) {
+                    this.interact.overSquare = square
+                    this.interact.currentArrowEndSquare = square
+                }
+            },
+            squareMouseEnd() {
+                if (!this.interact.arrowDragging)
+                    return
+
+                this.interact.arrowDragging = false
+                this.drawArrow(this.interact.currentArrowStartSquare, this.interact.currentArrowEndSquare)
+            },
+            findSquareCoordinates() {
+                const squares = $('.square')
+                for (let s = 0; s < squares.length; ++s) {
+                    const square = $(squares[s])
+                    const squareDescriptor = square.attr('data-square')
+                    const left = square.offset().left
+                    const top = square.offset().top
+                    const right = left + square[0].offsetWidth
+                    const bottom = top + square[0].offsetHeight
+                    this.interact.squareCoordinates[squareDescriptor] = {
+                        left, top, right, bottom
+                    }
+                }
+            },
+            drawArrow(source, target) {
+                // const canvas = $('canvas.arrows')[0]
+                // const ctx = canvas.getContext('2d')
+
+                // // Set correct height and width
+                // canvas.width = canvas.offsetWidth
+                // canvas.height = canvas.offsetHeight
+
+                // // Context style
+                // ctx.fillStyle = 'rgba(0, 0, 0, 0.75)'
+                // ctx.lineWidth = 20
+
+                const boardElement = $('div#board')
+                const sourceSquareElement = this.getSquareElementByDescriptor(source)
+                const targetSquareElement = this.getSquareElementByDescriptor(target)
+
+                // Get coordinates
+                const offsetLeft = Math.round(boardElement.offset().left)
+                const offsetTop = Math.round(boardElement.offset().top)
+                const fromX = Math.round(sourceSquareElement.offset().left + (sourceSquareElement[0].offsetWidth / 2) - offsetLeft * 2)
+                const fromY = Math.round(sourceSquareElement.offset().top + (sourceSquareElement[0].offsetHeight / 2) - offsetTop)
+                const toX = Math.round(targetSquareElement.offset().left + (targetSquareElement[0].offsetWidth / 2) - offsetLeft * 2)
+                const toY = Math.round(targetSquareElement.offset().top + (targetSquareElement[0].offsetHeight / 2) - offsetTop)
+                // Angle and length
+                const deltaX = toX - fromX
+                const deltaY = toY - fromY
+                const length = Math.hypot(deltaX, deltaY)
+                const theta = Math.atan2(deltaY, deltaX)
+                const angle = theta * (180 / Math.PI)
+
+                // Insert arrow
+                // These values are depentant on css values. Maybe I can fix that.
+                this.highlightedSquares.arrows.push({
+                    left: fromX + offsetLeft,
+                    top: fromY - 8,
+                    length: length - 28,
+                    angle
+                })
+
+                // // Draw arrow line
+                // ctx.beginPath()
+                // ctx.moveTo(fromX, fromY)
+                // ctx.lineTo(toX, toY)
+                // ctx.stroke()
+
+                // // Draw arrow point
+                // ctx.beginPath()
+                // ctx.moveTo()
+
+
             },
 
             // ----------------------------------------
@@ -1570,16 +1677,6 @@
             // ----------------------------------------
             // OTHER
             // ----------------------------------------
-            squareMouseDown(evt) {
-                if (evt.button !== 2)
-                    return
-
-                const squareDescriptor = $(evt.currentTarget).attr('data-square')
-                if (this.highlightedSquares.marked.includes(squareDescriptor))
-                    this.highlightedSquares.marked.remove(squareDescriptor)
-                else
-                    this.highlightedSquares.marked.push(squareDescriptor)
-            },
             keyDown(evt) {
                 switch (evt.key.toLowerCase()) {
                 case 't':
@@ -1752,6 +1849,27 @@
                 left: calc(5% + 2px);
                 background-color: rgba(0, 0, 0, 0.6);
                 z-index: 500;
+            }
+            div.arrow {
+                position: absolute;
+                width: 200px;
+                height: 16px;
+                background-color: rgba(66, 134, 244, 0.75);
+                z-index: 11;
+                transform-origin: 0% 50%;
+                transform: rotate(25deg);
+
+                &:after {
+                    content: '';
+                    display: block;
+                    width: 0;
+                    height: 0;
+                    margin-left: 100%;
+                    margin-top: -8px;
+                    border-top: 16px solid transparent;
+                    border-bottom: 16px solid transparent;
+                    border-left: 28px solid rgba(66, 134, 244, 0.75);
+                }
             }
             div.squares {
                 display: inline-block;
