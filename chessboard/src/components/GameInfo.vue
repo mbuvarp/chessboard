@@ -53,7 +53,7 @@
                 <div class="button" @click="goto(-1)"><icon name="fast-forward"></icon></div>
             </div>
             <div class="buttons right">
-                <div class="button" @click="load('pgn')"><icon name="file"></icon></div>
+                <div class="button" @click="load"><icon name="file"></icon></div>
                 <div class="button" @click="reset"><icon name="rotate-left"></icon></div>
             </div>
         </div>
@@ -70,6 +70,7 @@
     import 'vue-awesome/icons/pause'
     import 'vue-awesome/icons/rotate-left'
     import 'vue-awesome/icons/file'
+    import NotationSelectDialog from './NotationSelectDialog'
 
     const $ = require('jquery')
     const moment = require('moment')
@@ -81,6 +82,7 @@
         data() {
             return {
                 currentHalfMove: 0,
+                dlgNotation: NotationSelectDialog
             }
         },
 
@@ -160,8 +162,13 @@
                 this.resetGame()
                 this.$bus.$emit('reset', null)
             },
-            load(type) {
-                this.$bus.$emit('load', type)
+            load() {
+                this.$popup({
+                    comp: this.dlgNotation
+                }).then(success => {
+                    // Load PGN or FEN
+                    this.$bus.$emit('load', success)
+                })
             },
 
             getCaptures(color) {
@@ -215,7 +222,7 @@
         div.info {
             width: 100%;
             border-bottom: 1px solid $lightBorder;
-            background-color: #eaeaea;
+            background-color: $lightGrayBackground;
             user-select: none;
             overflow: hidden;
             box-sizing: border-box;

@@ -1,6 +1,16 @@
 <template>
     
     <div id="app">
+        <popup-dialog
+            v-if="popup.show"
+            :promiseResolve="popup.promiseResolve"
+            :promiseReject="popup.promiseReject"
+            :header="popup.header"
+            :cancelText="popup.cancelText"
+            :submitText="popup.submitText"
+            :alpha="popup.alpha"
+            :comp="popup.comp"
+        ></popup-dialog>
         <router-view/>
     </div>
 
@@ -10,7 +20,39 @@
 
     export default {
         name: 'app',
-    };
+
+        data() {
+            return {
+                popup: {
+                    promise: null,
+                    show: false,
+                    header: '',
+                    cancelText: 'Cancel',
+                    submitText: 'Submit',
+                    alpha: 0.2,
+                    comp: null
+                }
+            }
+        },
+
+        mounted() {
+            this.$bus.$on('popup', this.displayPopup)
+        },
+
+        methods: {
+            displayPopup(options) {
+                this.popup.promiseResolve = options.promiseResolve
+                this.popup.promiseReject = options.promiseReject
+                this.popup.header = options.header || ''
+                this.popup.cancelText = options.cancelText || 'Cancel'
+                this.popup.submitText = options.submitText || 'Submit'
+                this.popup.alpha = options.alpha || 0.2
+                this.popup.comp = options.comp || null
+
+                this.popup.show = !this.popup.show
+            }
+        }
+    }
 
 </script>
 

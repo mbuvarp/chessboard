@@ -243,31 +243,8 @@
                 // Store reset
                 this.resetGame()
             },
-            load(type) {
-                if (type === 'pgn') {
-                    this.loadPGN = true
-                    const unwatch = this.$watch('submittedPGN', pgn => {
-                        // If canceled
-                        if (pgn === '') {
-                            unwatch()
-                            this.submittedPGN = null
-                            return
-                        }
+            load(options) {
 
-                        // Otherwise, try to load it
-                        const valid = this.pgnIsValid(pgn)
-                        if (valid) {
-                            this.reset()
-                            this.executePGN(valid.moves)
-                        }
-                    })
-                }
-            },
-            executePGN(moves) {
-                for (let i = 0; i < moves.length; i++) {
-                    const move = moves[i]
-                    console.log(move)
-                }
             },
             analyse() {
                 this.displayCheckmate = false
@@ -315,45 +292,6 @@
 
                 this.currentMoveStart = new Date().getTime()
                 this.gameStarted = true
-            },
-            pgnIsValid(pgn) {
-                const lines = pgn.split('\n')
-                if (lines.length === 1)
-                    return false
-
-                if (!lines.includes(''))
-                    return false
-
-                const patternMeta = /[A-Za-z0-9]+ "['/\-0-9A-Za-z,\\. ]+"/
-                const metadata = []
-                let breakLine = 0
-                for (let i = 0; i < lines.length; i++) {
-                    if (lines[i] === '') {
-                        breakLine = i
-                        break
-                    }
-                    if (patternMeta.test(lines[i]))
-                        metadata.push(lines[i])
-                }
-
-                const moveLines = lines.splice(breakLine + 1)
-                const moves = moveLines.join(' ')
-
-                const allMoves = moves.split(/[0-9]+\./)
-
-                // Remove empty lines, and trim the rest
-                for (let i = 0; i < allMoves.length; i++) {
-                    if (allMoves[i] === '') {
-                        allMoves.splice(i, 1)
-                        i--
-                    } else 
-                        allMoves[i] = allMoves[i].trim()
-                }
-
-                return {
-                    metadata,
-                    moves: allMoves
-                }
             },
 
             // ----------------------------------------
@@ -495,8 +433,15 @@
                 if (!this.interact.arrowDragging)
                     return
 
+                this.interact.overSquare = null
                 this.interact.arrowDragging = false
-                this.drawArrow(this.interact.currentArrowStartSquare, this.interact.currentArrowEndSquare)
+
+                const source = this.interact.currentArrowStartSquare
+                const target = this.interact.currentArrowEndSquare
+                if (this.highlightedSquares.arrows.findIndex(arrow => arrow.source === source && arrow.target === target) < 0)
+                    this.addArrow(source, target)
+                else
+                    this.removeArrow(source, target)
             },
             findSquareCoordinates() {
                 const squares = $('.square')
@@ -512,17 +457,9 @@
                     }
                 }
             },
-            drawArrow(source, target) {
-                // const canvas = $('canvas.arrows')[0]
-                // const ctx = canvas.getContext('2d')
-
-                // // Set correct height and width
-                // canvas.width = canvas.offsetWidth
-                // canvas.height = canvas.offsetHeight
-
-                // // Context style
-                // ctx.fillStyle = 'rgba(0, 0, 0, 0.75)'
-                // ctx.lineWidth = 20
+            addArrow(source, target) {
+                if (source === target)
+                    return
 
                 const boardElement = $('div#board')
                 const sourceSquareElement = this.getSquareElementByDescriptor(source)
@@ -545,23 +482,20 @@
                 // Insert arrow
                 // These values are depentant on css values. Maybe I can fix that.
                 this.highlightedSquares.arrows.push({
+                    source,
+                    target,
                     left: fromX + offsetLeft,
                     top: fromY - 8,
                     length: length - 28,
                     angle
                 })
-
-                // // Draw arrow line
-                // ctx.beginPath()
-                // ctx.moveTo(fromX, fromY)
-                // ctx.lineTo(toX, toY)
-                // ctx.stroke()
-
-                // // Draw arrow point
-                // ctx.beginPath()
-                // ctx.moveTo()
-
-
+            },
+            removeArrow(source, target) {
+                this.highlightedSquares.arrows.removeIf(arrow => arrow.source === source && arrow.target === target)
+            },
+            clearArrowsAndMarked() {
+                this.highlightedSquares.arrows = []
+                this.highlightedSquares.marked = []
             },
 
             // ----------------------------------------
@@ -1682,6 +1616,9 @@
                 case 't':
                     this.animatedMove('e2', 'e3')
                     break;
+                case 'escape':
+                    this.clearArrowsAndMarked()
+                    break;
                 default:
                     break;
                 }
@@ -1701,11 +1638,6 @@
 <style lang="scss" scoped>
     @import '../assets/style/_settings.scss';
     @import '../assets/style/_standards.scss';
-
-    @font-face {
-        font-family: 'OpenSans-Regular';
-        src: url('/static/fonts/OpenSans/OpenSans-Regular.ttf') format('truetype');        
-    }
 
     div.container {
         position: relative;
@@ -1858,6 +1790,7 @@
                 z-index: 11;
                 transform-origin: 0% 50%;
                 transform: rotate(25deg);
+                pointer-events: none;
 
                 &:after {
                     content: '';
