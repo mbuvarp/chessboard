@@ -24,42 +24,66 @@ const Helpers = {
             },
 
             // Chess
-            pgnIsValid(pgn) {
-                const lines = pgn.split('\n')
-                if (lines.length === 1)
-                    return false
+            extractPGN(pgn) {
+                // TODO Error checking
+                // TODO PGN comments
 
                 // Metadata
                 const patternMeta = /\[\w+ ".+"\]/giu
-                const metadata = []
-                let breakLine = 0
-                for (let i = 0; i < lines.length; i++) {
-                    if (lines[i] === '') {
-                        breakLine = i
+                const metadata = {}
+                // Check if there is metadata
+                const containsMeta = patternMeta.test(pgn)
+                if (containsMeta) {
+                    const metas = pgn.match(patternMeta)
+                    metas.forEach(meta => {
+                        const key = meta.split('[')[1].split(' "')[0]
+                        let value = meta.match(/".+"/giu)[0]
+                        value = value.substring(1, value.length - 1)
+                        metadata[key] = value
+                    })
+                }
+
+                // Moves
+                // Split if contains meta
+                if (containsMeta)
+                    pgn = pgn.split('\n\n')[1]
+
+                const moveSplitPattern = /[0-9]+\./giu
+                let splittedMoves = pgn.split(moveSplitPattern)
+                // Remove first empty
+                splittedMoves.splice(0, 1)
+                // Trim all
+                splittedMoves = splittedMoves.map(el => el.trim().replace('\n', ' '))
+
+                const moves = {}
+                for (let i = 0; i < splittedMoves.length; i++) {
+                    const move = splittedMoves[i]
+                    moves[i + 1] = {}
+
+                    const movePattern = /^([a-hPRNBQK]+[1-8]?x?[a-h]?[1-8]x?=?[RNBQ]?[+#]?)|([oO]-[oO](-[oO])?)$/i
+                    const resultPattern = /^([01]|(1\/2))-([01]|(1\/2))$/i
+                    const splitted = move.split(' ')
+                    const white = splitted[0]
+                    const black = splitted[1]
+
+                    if (movePattern.test(white))
+                        moves[i + 1].white = white
+                    else if (resultPattern.test(white)) {
+                        moves.result = white
                         break
                     }
-                    if (patternMeta.test(lines[i]))
-                        metadata.push(lines[i])
+
+                    if (typeof black !== 'undefined') {
+                        if (movePattern.test(black))
+                            moves[i + 1].black = black
+                        else if (resultPattern.test(black)) {
+                            moves.result = black
+                            break
+                        }
+                    } else break
                 }
 
-                const moveLines = lines.splice(breakLine + 1)
-                const moves = moveLines.join(' ')
-
-                const allMoves = moves.split(/[0-9]+\./)
-
-                // Remove empty lines, and trim the rest
-                for (let i = 0; i < allMoves.length; i++) {
-                    if (allMoves[i] === '') {
-                        allMoves.splice(i, 1)
-                        i--
-                    } else 
-                        allMoves[i] = allMoves[i].trim()
-                }
-
-                return {
-                    metadata,
-                    moves: allMoves
-                }
+                return { metadata, moves }
             },
         }
 

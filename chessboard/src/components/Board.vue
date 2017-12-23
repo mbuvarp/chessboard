@@ -244,7 +244,11 @@
                 this.resetGame()
             },
             load(options) {
-
+                if (options.type === 'pgn') {
+                    const pgn = options.value
+                    const extracted = this.$helpers.extractPGN(pgn)
+                    console.log(extracted)
+                }
             },
             analyse() {
                 this.displayCheckmate = false
