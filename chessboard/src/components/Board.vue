@@ -14,14 +14,6 @@
                 </div>
             </div>
         </div>
-        <div class="load-pgn modal" v-if="loadPGN">
-            <h2>Load PGN</h2>
-            <textarea v-model="editablePGN"></textarea>
-            <div class="buttons">
-                <button type="button" @click="submittedPGN = ''">Cancel</button>
-                <button type="button" @click="submittedPGN = editablePGN">Submit</button>
-            </div>
-        </div>
         <div class="side numbers">
             <div v-for="number in numbers" class="number" v-text="number"></div>
         </div>
@@ -1651,8 +1643,13 @@
         font-family: 'OpenSans-Regular', arial, sans-serif;
 
         div.checkmate {
+            box-sizing: border-box;
+            text-align: center;
+            margin-top: calc(-2.5%);
+            margin-left: calc(2.5% + 1px);
 
             h2 {
+                box-sizing: border-box;
                 padding: 24px;
             }
             div.buttons {
@@ -1684,23 +1681,6 @@
                 div.reset {
                     margin-left: 10px;
                 }
-            }
-        }
-        div.load-pgn {
-
-            textarea {
-                width: 100%;
-                height: 260px;
-                border: none;
-                box-sizing: border-box;
-                border: 1px solid $lightBorder;
-                resize: vertical;
-                color: #333;
-            }
-            div.buttons {
-                width: 100%;
-                text-align: right;
-                margin-top: 4px;
             }
         }
         div.side {
