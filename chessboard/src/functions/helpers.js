@@ -36,7 +36,7 @@ const Helpers = {
                 if (containsMeta) {
                     const metas = pgn.match(patternMeta)
                     metas.forEach(meta => {
-                        const key = meta.split('[')[1].split(' "')[0]
+                        const key = meta.split('[')[1].split(' "')[0].toLowerCase()
                         let value = meta.match(/".+"/giu)[0]
                         value = value.substring(1, value.length - 1)
                         metadata[key] = value
@@ -55,10 +55,9 @@ const Helpers = {
                 // Trim all
                 splittedMoves = splittedMoves.map(el => el.trim().replace('\n', ' '))
 
-                const moves = {}
+                const moves = []
                 for (let i = 0; i < splittedMoves.length; i++) {
                     const move = splittedMoves[i]
-                    moves[i + 1] = {}
 
                     const movePattern = /^([a-hPRNBQK]+[1-8]?x?[a-h]?[1-8]x?=?[RNBQ]?[+#]?)|([oO]-[oO](-[oO])?)$/i
                     const resultPattern = /^([01]|(1\/2))-([01]|(1\/2))$/i
@@ -67,17 +66,17 @@ const Helpers = {
                     const black = splitted[1]
 
                     if (movePattern.test(white))
-                        moves[i + 1].white = white
+                        moves.push(white)
                     else if (resultPattern.test(white)) {
-                        moves.result = white
+                        moves.push(white)
                         break
                     }
 
                     if (typeof black !== 'undefined') {
                         if (movePattern.test(black))
-                            moves[i + 1].black = black
+                            moves.push(black)
                         else if (resultPattern.test(black)) {
-                            moves.result = black
+                            moves.push(black)
                             break
                         }
                     } else break

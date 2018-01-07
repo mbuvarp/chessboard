@@ -197,7 +197,7 @@
             // ----------------------------------------
             // SETUP
             // ----------------------------------------
-            reset() {
+            reset(pgn) {
                 // Reset state
                 this.pieces = []
                 this.squares = []
@@ -233,13 +233,43 @@
                 this.findAllLegalMoves()
 
                 // Store reset
-                this.resetGame()
+                this.resetGame(pgn)
+                if (typeof pgn !== 'undefined')
+                    this.loadPGNHalfmoves(pgn)
             },
             load(options) {
                 if (options.type === 'pgn') {
                     const pgn = options.value
                     const extracted = this.$helpers.extractPGN(pgn)
-                    console.log(extracted)
+
+                    this.reset(extracted)
+                }
+            },
+            loadPGNHalfmoves(pgn) {
+                const moves = pgn.moves
+
+                // Regex patterns
+                const patterns = {
+                    pawnMove: /^[a-h][1-8]$/i,
+                    pieceMove: /^[RNBQK]([a-h])?([1-8])?[a-h][1-8]$/i,
+                    pawnCapture: /^[a-h]x[a-h][1-8]$/i,
+                    pieceCapture: /^[RNBQK]([a-h])?([1-8])?x[a-h][1-8]$/i,
+                    castling: /^O-O(-O)?$/i,
+                    promotion: /=[RKBQ]$/i,
+                    check: /\+$/i,
+                    checkmate: /#$/i,
+                    result: /^([01]|(1\/2))-([01]|(1\/2))$/i
+                }
+
+                this.emptyPGNMoves()
+
+                // Play the game, move for move
+                for (let i = 0; i < moves.length; i++) {
+                    const move = moves[i]
+
+                    if (moveType === 'pawnMove') {
+
+                    }
                 }
             },
             analyse() {
@@ -1383,6 +1413,37 @@
             getPieceBySquare(square) {
                 return this.pieces.find(piece => piece.square === square && !piece.is_captured)
             },
+            getPieceByMove(move, color) {
+                // Regex patterns
+                const patterns = {
+                    pawnMove: /^[a-h][1-8]$/i,
+                    pieceMove: /^[RNBQK]([a-h])?([1-8])?[a-h][1-8]$/i,
+                    pawnCapture: /^[a-h]x[a-h][1-8]$/i,
+                    pieceCapture: /^[RNBQK]([a-h])?([1-8])?x[a-h][1-8]$/i,
+                    castling: /^O-O(-O)?$/i,
+                    promotion: /=[RKBQ]$/i,
+                    check: /\+$/i,
+                    checkmate: /#$/i,
+                    result: /^([01]|(1\/2))-([01]|(1\/2))$/i
+                }
+                const moveType = this.$helpers.findObjectKey(patterns, value => value.test(move))
+
+                if (moveType === 'pawnMove' || moveType === 'pawnCapture') {
+                    const pieceType = 'P'
+                    const square = 
+                    return this.pieces.find(piece =>
+                        piece.legalMoves.includes(square) &&
+                        piece.type === pieceType &&
+                        !piece.is_captured &&
+                        piece.color === color)
+                }
+            },
+            getPieceTypeByMove(move) {
+                
+            },
+            getTargetSquareByMove(move) {
+                
+            },
 
             // ----------------------------------------
             // BOARD VISUALS
@@ -1623,6 +1684,7 @@
             ...mapMutations([
                 'updateConfigFEN',
                 'addPGNMove',
+                'emptyPGNMoves',
                 'addCapturedPiece',
                 'resetGame'
             ])

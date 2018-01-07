@@ -82,22 +82,12 @@ export default new Vuex.Store({
     },
 
     mutations: {
-        resetGame(state) {
+        resetGame(state, pgn) {
+            // General
             state.game.halfmoves = []
             state.game.captures = {
                 white: [],
                 black: []
-            }
-            state.game.fen = ''
-            state.game.pgn = {
-                event: null,
-                site: null, // City, Region COUNTRY (three letter code, IOC)
-                date: '??', // YYYY.MM.DD (?? = unknown)
-                round: null,
-                white: null, // Lastname, Firstname
-                black: null, // Lastname, Firstname
-                result: '*', // 1-0, 0-1, 1/2-1/2, * (other, e.g. ongoing)
-                moves: []
             }
             state.game.board = {
                 highlight: {
@@ -107,6 +97,36 @@ export default new Vuex.Store({
 
                 flipped: false
             }
+
+            // No pgn
+            if (typeof pgn !== 'object') {
+                state.game.playerWhite =  'White'
+                state.game.playerBlack = 'Black'
+                state.game.fen = ''
+                state.game.pgn = {
+                    event: null,
+                    site: null, // City, Region COUNTRY (three letter code, IOC)
+                    date: '??', // YYYY.MM.DD (?? = unknown)
+                    round: null,
+                    white: null, // Lastname, Firstname
+                    black: null, // Lastname, Firstname
+                    result: '*', // 1-0, 0-1, 1/2-1/2, * (other, e.g. ongoing)
+                    moves: []
+                }
+            // From pgn
+            } else {
+                state.game.playerWhite = pgn.white
+                state.game.playerBlack = pgn.black
+                state.game.pgn = pgn
+                state.game.board = {
+                    highlight: {
+                        legal: true,
+                        move: true
+                    },
+
+                    flipped: false
+                }
+            }
         },
 
         updateConfigFEN(state, fen) {
@@ -115,6 +135,23 @@ export default new Vuex.Store({
         addPGNMove(state, move) {
             state.game.pgn.moves.push(move)
         },
+        /*
+          Halfmove contains:
+            captured (captured piece or null)
+            castling (0 for none, 1 for kingside, 2 for queenside)
+            castlingOpportunities
+              blackKing (true/false)
+              blackQueen (true/false)
+              whiteKing (true/false)
+              whiteQueen (true/false)
+            check (true/false)
+            enPassant (string, square)
+            piece (ChessPiece)
+            promotion (string, 'RNBQ')
+            source (string)
+            target (string)
+            timespan (ms)
+        */
         addHalfMove(state, move) {
             state.game.halfmoves.push(move)
         },
