@@ -1415,27 +1415,35 @@
             },
             getPieceByMove(move, color) {
                 // Regex patterns
-                const patterns = {
-                    pawnMove: /^[a-h][1-8]$/i,
-                    pieceMove: /^[RNBQK]([a-h])?([1-8])?[a-h][1-8]$/i,
-                    pawnCapture: /^[a-h]x[a-h][1-8]$/i,
-                    pieceCapture: /^[RNBQK]([a-h])?([1-8])?x[a-h][1-8]$/i,
-                    castling: /^O-O(-O)?$/i,
-                    promotion: /=[RKBQ]$/i,
-                    check: /\+$/i,
-                    checkmate: /#$/i,
-                    result: /^([01]|(1\/2))-([01]|(1\/2))$/i
-                }
-                const moveType = this.$helpers.findObjectKey(patterns, value => value.test(move))
+                const pawnMove = /^[a-h][1-8]/
+                const pawnCapture = /^[a-h]x[a-h][1-8]/
+                const pieceMove = /^([RNBQK])([a-h])?([1-8])?([a-h][1-8])/
+                const pieceCapture = /^([RNBQK])([a-h])?([1-8])?x([a-h][1-8])/
+                const castling = /^O-O(-O)?$/
+                const promotion = /^[a-h][1-8]=[RKBQ]\+?#?$/
+                const check = /\+$/
+                const checkmate = /#$/
+                const result = /^([01]|(1\/2))-([01]|(1\/2))$/
 
-                if (moveType === 'pawnMove' || moveType === 'pawnCapture') {
-                    const pieceType = 'P'
-                    const square = 
+                if (pawnMove.test(move) || pawnCapture.test(move)) {
+                    const type = 'P'
                     return this.pieces.find(piece =>
-                        piece.legalMoves.includes(square) &&
-                        piece.type === pieceType &&
+                        piece.type === type &&
                         !piece.is_captured &&
-                        piece.color === color)
+                        piece.color === color &&
+                        piece.legalMoves.includes(move))
+                } else {
+                    if ((match = move.match(pieceMove)) || (match = move.match(pieceCapture))) {
+                        const type = match[1]
+                        const target = match[4]
+                        const special = (match[2] || '') + (match[3] || '')
+                        return this.pieces.find(piece =>
+                            piece.type === type &&
+                            !piece.is_captured &&
+                            piece.color === color &&
+                            piece.legalMoves.includes(target) &&
+                            piece.square.indexOf(special) >= 0)
+                    }
                 }
             },
             getPieceTypeByMove(move) {
@@ -1671,7 +1679,7 @@
             keyDown(evt) {
                 switch (evt.key.toLowerCase()) {
                 case 't':
-                    this.animatedMove('e2', 'e3')
+                    console.log(this.getPieceByMove('Ng1f3', 'W'))
                     break;
                 case 'escape':
                     this.clearArrowsAndMarked()

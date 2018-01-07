@@ -100,7 +100,7 @@ export default new Vuex.Store({
 
             // No pgn
             if (typeof pgn !== 'object') {
-                state.game.playerWhite =  'White'
+                state.game.playerWhite = 'White'
                 state.game.playerBlack = 'Black'
                 state.game.fen = ''
                 state.game.pgn = {
@@ -134,6 +134,9 @@ export default new Vuex.Store({
         },
         addPGNMove(state, move) {
             state.game.pgn.moves.push(move)
+        },
+        emptyPGNMoves(state) {
+            state.game.pgn.moves = []
         },
         /*
           Halfmove contains:
