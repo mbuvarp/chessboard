@@ -5,6 +5,7 @@ import Icon from 'vue-awesome/components/Icon'
 import App from './App'
 import TabViewer from './components/controls/TabViewer'
 import PopupDialog from './components/controls/PopupDialog'
+import CheckSlide from './components/controls/CheckSlide'
 import router from './router'
 import store from './store/store'
 import helpers from './functions/helpers'
@@ -23,6 +24,7 @@ Vue.use(popup)
 Vue.component('icon', Icon)
 Vue.component('tab-viewer', TabViewer)
 Vue.component('popup-dialog', PopupDialog)
+Vue.component('check-slide', CheckSlide)
 
 /* eslint-disable no-new */
 new Vue({

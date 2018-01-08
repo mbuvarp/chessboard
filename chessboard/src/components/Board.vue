@@ -166,9 +166,9 @@
             ...mapState({
                 white: state => state.game.playerWhite,
                 black: state => state.game.playerBlack,
-                boardConfig: state => state.game.board,
+                highlight: state => state.options.highlight,
                 halfmoves: state => state.game.halfmoves,
-                pieceSet: state => state.theme.pieceSet
+                pieceSet: state => state.options.theme.pieceSet
             })
         },
 
@@ -246,31 +246,18 @@
                 }
             },
             loadPGNHalfmoves(pgn) {
-                const moves = pgn.moves
+                // const moves = pgn.moves
 
-                // Regex patterns
-                const patterns = {
-                    pawnMove: /^[a-h][1-8]$/i,
-                    pieceMove: /^[RNBQK]([a-h])?([1-8])?[a-h][1-8]$/i,
-                    pawnCapture: /^[a-h]x[a-h][1-8]$/i,
-                    pieceCapture: /^[RNBQK]([a-h])?([1-8])?x[a-h][1-8]$/i,
-                    castling: /^O-O(-O)?$/i,
-                    promotion: /=[RKBQ]$/i,
-                    check: /\+$/i,
-                    checkmate: /#$/i,
-                    result: /^([01]|(1\/2))-([01]|(1\/2))$/i
-                }
-
-                this.emptyPGNMoves()
+                // this.emptyPGNMoves()
 
                 // Play the game, move for move
-                for (let i = 0; i < moves.length; i++) {
-                    const move = moves[i]
+                // for (let i = 0; i < moves.length; i++) {
+                //     const move = moves[i]
 
-                    if (moveType === 'pawnMove') {
+                //     if (moveType === 'pawnMove') {
 
-                    }
-                }
+                //     }
+                // }
             },
             analyse() {
                 this.displayCheckmate = false
@@ -364,9 +351,9 @@
 
                 this.currentPiece = piece
 
-                if (this.boardConfig.highlight.legal)
+                if (this.highlight.legal)
                     this.highlightedSquares.legalMoves = piece.legalMoves
-                if (this.boardConfig.highlight.move)
+                if (this.highlight.move)
                     this.highlightedSquares.move.push(square)
             },
             pieceDragMove(evt) {
@@ -1240,7 +1227,7 @@
                 this.check = false
                 this.checkingPieces = []
 
-                if (this.boardConfig.highlight.move)
+                if (this.highlight.move)
                     this.highlightedSquares.move = [prevSquare, square]
 
                 // Find new legal moves
@@ -1419,32 +1406,46 @@
                 const pawnCapture = /^[a-h]x[a-h][1-8]/
                 const pieceMove = /^([RNBQK])([a-h])?([1-8])?([a-h][1-8])/
                 const pieceCapture = /^([RNBQK])([a-h])?([1-8])?x([a-h][1-8])/
-                const castling = /^O-O(-O)?$/
+                const castling = /^O-O(-O)?/
                 const promotion = /^[a-h][1-8]=[RKBQ]\+?#?$/
                 const check = /\+$/
                 const checkmate = /#$/
-                const result = /^([01]|(1\/2))-([01]|(1\/2))$/
+                const result = /^(1-0)|(0-1)|(0\.5-0\.5)|\*$/
 
                 if (pawnMove.test(move) || pawnCapture.test(move)) {
-                    const type = 'P'
+                    return this.pieces.find(piece =>
+                        piece.type === 'P' &&
+                        !piece.is_captured &&
+                        piece.color === color &&
+                        piece.legalMoves.includes(move))
+                } else if ((match = move.match(pieceMove)) || (match = move.match(pieceCapture))) {
+                    const type = match[1]
+                    const target = match[4]
+                    const special = (match[2] || '') + (match[3] || '')
                     return this.pieces.find(piece =>
                         piece.type === type &&
                         !piece.is_captured &&
                         piece.color === color &&
-                        piece.legalMoves.includes(move))
-                } else {
-                    if ((match = move.match(pieceMove)) || (match = move.match(pieceCapture))) {
-                        const type = match[1]
-                        const target = match[4]
-                        const special = (match[2] || '') + (match[3] || '')
-                        return this.pieces.find(piece =>
-                            piece.type === type &&
-                            !piece.is_captured &&
-                            piece.color === color &&
-                            piece.legalMoves.includes(target) &&
-                            piece.square.indexOf(special) >= 0)
-                    }
+                        piece.legalMoves.includes(target) &&
+                        piece.square.indexOf(special) >= 0)
+                } else if (castling) {
+                    return this.pieces.find(piece =>
+                        piece.type === 'K' &&
+                        piece.color === color)
+                } else if (move.test(promotion)) {
+                    const prom = move.substring(0, 2)
+                    return this.pieces.find(piece =>
+                        piece.type === 'P' &&
+                        !piece.is_captured &&
+                        piece.color === color &&
+                        piece.legalMoves.includes(prom))
+                } else if (move.test(check) || move.test(checkmate)) {
+                    const removed = move.substring(0, move.length - 1)
+                    return this.getPieceByMove(removed)
+                } else if (move.test(result)) {
+                    return null
                 }
+                return null
             },
             getPieceTypeByMove(move) {
                 

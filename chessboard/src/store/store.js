@@ -26,32 +26,32 @@ export default new Vuex.Store({
                 result: '*', // 1-0, 0-1, 1/2-1/2, * (other, e.g. ongoing)
                 moves: []
             },
-
-            board: {
-                highlight: {
-                    legal: true,
-                    move: true
-                },
-
-                flipped: false
-            }
         },
-        theme: {
-            pieceSet: 'cburnett',
-            pieceSets: [
-                'alfonso',
-                'cburnett',
-                'chessicons',
-                'chessmonk',
-                'freestaunton',
-                'kilfiger',
-                'makruk',
-                'maya',
-                'merida',
-                'metaltops',
-                'pirat',
-                'regular'
-            ]
+        options: {
+            highlight: {
+                legal: true,
+                move: true
+            },
+
+            flipped: false,
+            
+            theme: {
+                pieceSet: 'cburnett',
+                pieceSets: [
+                    'alfonso',
+                    'cburnett',
+                    'chessicons',
+                    'chessmonk',
+                    'freestaunton',
+                    'kilfiger',
+                    'makruk',
+                    'maya',
+                    'merida',
+                    'metaltops',
+                    'pirat',
+                    'regular'
+                ]
+            }
         }
     },
 
@@ -89,7 +89,7 @@ export default new Vuex.Store({
                 white: [],
                 black: []
             }
-            state.game.board = {
+            state.options.board = {
                 highlight: {
                     legal: true,
                     move: true
@@ -118,7 +118,7 @@ export default new Vuex.Store({
                 state.game.playerWhite = pgn.white
                 state.game.playerBlack = pgn.black
                 state.game.pgn = pgn
-                state.game.board = {
+                state.options.board = {
                     highlight: {
                         legal: true,
                         move: true
@@ -160,6 +160,13 @@ export default new Vuex.Store({
         },
         addCapturedPiece(state, piece) {
             state.game.captures[piece.color === 'W' ? 'white' : 'black'].push(piece.type)
+        },
+
+        toggleHighlightLegal(state, value) {
+            state.options.highlight.legal = value
+        },
+        toggleHighlightMove(state, value) {
+            state.options.highlight.move = move
         }
     },
 })
